@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 
 
 export async function GET(request:Request){
+    console.log("GET function called");
     const user = await currentUser();
     if(!user){
         redirect("/sign-in")
@@ -23,31 +24,32 @@ export async function GET(request:Request){
         user.id,
         queryParams.data.from,
         queryParams.data.to,
+        
     )
-
+    console.log("stats" ,stats);
     return Response.json(stats)
 
 }
 export type getCategoriesStatsResponseType = Awaited<ReturnType<typeof getCategoriesStats>>
-async function getCategoriesStats(userId:string, from: Date, to:Date){
+async function getCategoriesStats(userId: string, from: Date, to: Date) {
     const stats = await prisma.transaction.groupBy({
-        by: ["type", "category","categoryIcon"],
-        where:{
+        by: ["type", "category", "categoryIcon"],
+        where: {
             userId,
-            date:{
-                gte:from,
-                lte:to,
+            date: {
+                gte: from,
+                lte: to,
             },
-            
         },
-        _sum:{
-            amount:true,
+        _sum: {
+            amount: true,
         },
         orderBy: {
-            _sum:{
-                amount:"desc"
-            }
-        }
-    })
-    return stats
+            _sum: {
+                amount: "desc",
+            },
+        },
+    });
+    console.log("Inside getCategoriesStats:", stats); 
+    return stats;
 }
