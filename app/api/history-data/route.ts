@@ -39,7 +39,9 @@ export async function GET(request : Request){
         month:queryParams.data.month,
         year:queryParams.data.year
     })
+    return Response.json(data);
 }
+
 export type getHistoryDataResponseType = Awaited<ReturnType<typeof getHistoryData>>
 async function getHistoryData(userId:string,timeframe:Timeframe, period:Period) {
     switch(timeframe){
@@ -128,6 +130,6 @@ async function getMonthHistoryData(userId:string,year:number,month:number){
             month,
             day:i,
             })
-        return history;    
+    return history;    
     }
 }
