@@ -15,11 +15,10 @@ import {CategoryPicker} from "./CategoryPicker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { CalculatorIcon, Calendar1Icon, Loader2 } from "lucide-react";
+import {  Calendar1Icon, Loader2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CreateTransaction } from "../_actions/transaction";
-import { Toast } from "@/components/ui/toast";
 import { toast } from "sonner";
 import { DateToUTCDate } from "@/lib/helpers";
 
@@ -38,6 +37,7 @@ function CreateTransactionDialog({trigger,type}:Props) {
     })
     const [open,setOpen] = useState(false);
     const handleCategoryChange =useCallback((value: string) =>{
+        console.log('Selected category:', value);
         form.setValue("category",value);
     },[form])
 
@@ -46,8 +46,10 @@ function CreateTransactionDialog({trigger,type}:Props) {
     const {mutate,isPending} = useMutation({
         mutationFn: CreateTransaction,
         onSuccess:() =>{
+            toast.dismiss("creating-transaction");
             toast.success("Transaction created successfully 🎉",{
-                id:"create-transaction"
+                id:"create-transaction",
+                duration: 5000,
             })
             form.reset({
                 type,
@@ -63,12 +65,14 @@ function CreateTransactionDialog({trigger,type}:Props) {
             })
 
             setOpen((prev) => !prev)
+           
         }
     })
 
     const onSubmit = useCallback((values: CreateTransactionSchemaType) => {
         toast.loading("Creating transaction...", {
             id: "creating-transaction",
+            duration: 3000,
         });
     
         mutate ( {
@@ -128,12 +132,13 @@ function CreateTransactionDialog({trigger,type}:Props) {
                             </FormItem>
                         )}
                     />
+                    Transaction : {form.watch("category")}
                     <div className="flex items-center justify-center gap-2">
                     <FormField
                         control={form.control}
                         name="category"
                         render={({field}) =>(
-                            <FormItem>
+                            <FormItem className="flex flex-col">
                                 <FormLabel>Category</FormLabel>
                                 <FormControl>
                                     <CategoryPicker type={type} onChange={handleCategoryChange}/>
@@ -149,7 +154,7 @@ function CreateTransactionDialog({trigger,type}:Props) {
                         control={form.control}
                         name="date"
                         render={({field}) =>(
-                            <FormItem>
+                            <FormItem className="flex flex-col">
                             <FormLabel>Transaction date</FormLabel>
                             <Popover>
                               <PopoverTrigger asChild>
@@ -174,7 +179,11 @@ function CreateTransactionDialog({trigger,type}:Props) {
                                 <Calendar
                                   mode="single"
                                   selected={field.value}
-                                  onSelect={field.onChange}
+                                  onSelect={(value) =>{
+                                    if(!value) return;
+                                    console.log("@@CALENDAR",value)
+                                    field.onChange(value);
+                                  }}
                                   initialFocus
                                 />
                               </PopoverContent>

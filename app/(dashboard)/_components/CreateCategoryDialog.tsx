@@ -36,7 +36,7 @@ function CreateCategoryDialog({ type ,successCallBack}: Props) {
     const queryClient = useQueryClient();
     const theme=useTheme();
     const { mutate, isPending } = useMutation({
-      mutationFn: CreateCategory,
+      mutationFn : CreateCategory,
       onSuccess: async (data: Category) => {
         form.reset({
           name: '',
