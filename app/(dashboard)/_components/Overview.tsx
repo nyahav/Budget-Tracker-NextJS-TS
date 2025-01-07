@@ -8,6 +8,7 @@ import { differenceInDays } from 'date-fns';
 import { MAX_DATE_RANGE_DAYS } from '@/lib/constans';
 import { toast, Toaster } from 'sonner'
 import StatsCards from './StatsCards';
+import CategoriesStats from './CategoriesStats';
 
 function Overview({userSettings}:{userSettings:UserSetting}) {
     const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
@@ -29,7 +30,6 @@ function Overview({userSettings}:{userSettings:UserSetting}) {
                     if(differenceInDays(to, from) > MAX_DATE_RANGE_DAYS){
                         console.log('Showing toast error');
                         toast.error(`The Max date range is ${MAX_DATE_RANGE_DAYS} days!`);
-                        
                         return;
                     }
                     setDateRange({from , to});
@@ -37,11 +37,19 @@ function Overview({userSettings}:{userSettings:UserSetting}) {
                 />
             </div>
     </div>
+    <div className='container flex w-full flex-col gap-2'>
     <StatsCards
         userSetting={userSettings}
         from={dateRange.from}
         to={dateRange.to}
         />
+        <CategoriesStats 
+        asas
+           userSetting={userSettings}
+           from={dateRange.from}
+           to={dateRange.to}
+        />
+    </div>
     </>
   )
 }
