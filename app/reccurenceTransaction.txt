@@ -1,0 +1,8 @@
+ you can just creaet a new table in the schema prisma file,
+let's say: RecurrentTransactions ( for example ).
+Then you store there your transaction with a "recurrentDay" and "recurrentMonth".
+You can also add a start and end if you want 
+( in order to have that transaction only in the period that you have choosed ).
+Then you can just call an api like /api/checkRecurrentTs where you get all the recurrent transactions,
+based on the current day you create the next date on which that recurrent transaction will be created and 
+then you query the db in order to see if there is a transaction like that or not. If is not existing than you can create it and thats it.

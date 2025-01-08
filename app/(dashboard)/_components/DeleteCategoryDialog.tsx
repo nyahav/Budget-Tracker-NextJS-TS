@@ -44,7 +44,7 @@ function DeleteCategoryDialog({ category, trigger }: Props) {
                     Are you sure?
                 </AlertDialogTitle>
                 <AlertDialogDescription>
-                    This action is can't be undone.
+                    This action is cant be undone.
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
