@@ -89,7 +89,7 @@ function CategoriesCard({
                 <div className='flex flex-col w-full gap-4 p-4'>
                     {filteredData.map((item)=>{
                         const amount = item._sum.amount || 0;
-                        const percentage = (amount *100)/ (total || amount)
+                        const percentage = (amount *100) / (total || amount)
                         return (
                             <div className="flex flex-col gap-2" key={item.category}>
                                 <div className="flex items-center justify-between">
@@ -106,7 +106,7 @@ function CategoriesCard({
                                 </div>
                                 <Progress
                                 value={percentage}
-                                indicator={type === "income"?"bg-emerald-500":"bg-red-500"}
+                                indicator={type === "income" ? "bg-emerald-500":"bg-red-500"}
                                 />
                             </div>
                         )

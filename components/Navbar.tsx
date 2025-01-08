@@ -22,8 +22,8 @@ function Navbar() {
 
 const items =[
     {label: "Dashboard", link: "/"},
-    {label: "Transactions", link: "/Transactions"},
-    {label: "Manage", link: "/Manage"},
+    {label: "Transactions", link: "/transactions"},
+    {label: "Manage", link: "/manage"},
 ]
 
 function MobileNavbar(){

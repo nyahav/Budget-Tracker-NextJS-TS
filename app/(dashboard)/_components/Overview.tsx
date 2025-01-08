@@ -44,7 +44,7 @@ function Overview({userSettings}:{userSettings:UserSetting}) {
         to={dateRange.to}
         />
         <CategoriesStats 
-        asas
+        
            userSetting={userSettings}
            from={dateRange.from}
            to={dateRange.to}

@@ -67,7 +67,7 @@ function History({ userSettings }: Props) {
                             variant={"outline"} 
                             className='flex items-center gap-2 text-sm'>
                             <div className="h-4 w-4 rounded-full bg-red-500"></div>
-                            Expence
+                            Expense
                         </Badge>
                     </div>
                 </CardTitle>
@@ -84,7 +84,7 @@ function History({ userSettings }: Props) {
                                             <stop offset={"1"} stopColor='#10b981' stopOpacity={"0"}/>
                                            
                                         </linearGradient>
-                                        <linearGradient id="expenceBar" x1="0" y1="0" x2="0" y2="1">
+                                        <linearGradient id="expenseBar" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset={"0"} stopColor='#ef4444' stopOpacity={"1"}/>
                                             <stop offset={"1"} stopColor='#ef4444' stopOpacity={"0"}/>
                                            
@@ -126,9 +126,9 @@ function History({ userSettings }: Props) {
                                     radius={4} 
                                     className='cursor-pointer'/>
                                     <Bar 
-                                    dataKey={"expence"} 
-                                    label="Expence" 
-                                    fill="url(#expenceBar)" 
+                                    dataKey={"expense"} 
+                                    label="Expense" 
+                                    fill="url(#expenseBar)" 
                                     radius={4} 
                                     className='cursor-pointer'/>
                                     <Tooltip cursor={{opacity:0.1}} content={props=>(
@@ -159,14 +159,14 @@ function CustomTooltip({active,payload,formatter}:any){
     if(!active || !payload || payload.length === 0)
         return null;
     const data = payload[0].payload;
-    const{expence,income}=data
+    const{expense,income}=data
     return (
         <div className="min-w-[300px] rounded border bg-background p-4">
-            <TooltipRow formatter={formatter} label="Expence"  value={expence} 
+            <TooltipRow formatter={formatter} label="Expense"  value={expense} 
             bgColor="bg-red-500" textColor="text-red-500"/>
             <TooltipRow formatter={formatter} label="Income"  value={income} 
             bgColor="bg-emerald-500" textColor="text-emerald-500"/>
-            <TooltipRow formatter={formatter} label="Balance"  value={income-expence} 
+            <TooltipRow formatter={formatter} label="Balance"  value={income-expense} 
             bgColor="bg-gray-500" textColor="text-foreground"/>
         </div>
     )

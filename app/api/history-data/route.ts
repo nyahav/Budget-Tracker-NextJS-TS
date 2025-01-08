@@ -53,7 +53,7 @@ async function getHistoryData(userId:string,timeframe:Timeframe, period:Period) 
     }
 }
 type HistoryData ={
-    expence: number,
+    expense: number,
     income:number,
     year:number,
     month:number,
@@ -67,7 +67,7 @@ async function getYearHistoryData(userId:string,year:number){
             year
         },
         _sum:{
-            expence:true,
+            expense:true,
             income:true,
         },
         orderBy :[{
@@ -78,18 +78,18 @@ async function getYearHistoryData(userId:string,year:number){
         return []
     const history:HistoryData[]= [];
     for (let i = 0; i < 12; i++) {
-        let expence = 0;
+        let expense = 0;
         let income = 0;
         const month = result.find((row) => row.month === i);
         
         if (month) {
-            expence = month._sum.expence || 0;
+            expense = month._sum.expense || 0;
             income = month._sum.income || 0;
         }
     history.push({
         year,
         month:i,
-        expence,
+        expense,
         income,
         })
     }
@@ -104,7 +104,7 @@ async function getMonthHistoryData(userId:string,year:number,month:number){
             month,
         },
         _sum:{
-            expence:true,
+            expense:true,
             income:true,
         },
         orderBy :[{
@@ -116,15 +116,15 @@ async function getMonthHistoryData(userId:string,year:number,month:number){
     const history:HistoryData[]= [];
     const daysInMonth = getDaysInMonth(new Date(year,month))
     for (let i = 1; i <= daysInMonth; i++) {
-        let expence = 0;
+        let expense = 0;
         let income = 0;
         const day = result.find((row) => row.day === i);
         if (day) {
-            expence = day._sum.expence || 0;
+            expense = day._sum.expense || 0;
             income = day._sum.income || 0;
         }
         history.push({
-            expence,
+            expense,
             income,
             year,
             month,
