@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { UserSetting } from '@prisma/client'
 import { Period, Timeframe } from '@/lib/types';
 import { GetFormatterForCurrency } from '@/lib/helpers';
@@ -18,6 +18,8 @@ import {
     XAxis,
     YAxis
 } from "recharts"
+import { cn } from '@/lib/utils';
+import CountUp from 'react-countup';
 
 interface Props {
   userSettings: UserSetting;
@@ -46,24 +48,24 @@ function History({ userSettings }: Props) {
             History
         </h2>
         <Card className='col-span-12 mt-2 w-full'>
-            <CardHeader className='gap-2'>
-                <CardTitle className='grid grid-flow-row justify-between gap-2 md:grid-flow-row'>
-                <HistoryPeriodSelector
-                 period={period} 
-                 setPeriod={setPeriod} 
-                 timeframe={timeframe} 
-                 setTimeFrame={settimeframe}
-                 />
-                    <div className="flex  h-10 gap-2">
+        <CardHeader className='gap-2'>
+                <CardTitle className='flex justify-between items-center'>
+                    <HistoryPeriodSelector
+                        period={period} 
+                        setPeriod={setPeriod} 
+                        timeframe={timeframe} 
+                        setTimeFrame={settimeframe}
+                    />
+                    <div className="flex gap-2">
                         <Badge 
-                        variant={"outline"} 
-                        className='flex items-center gap-2 text-sm'>
+                            variant={"outline"} 
+                            className='flex items-center gap-2 text-sm'>
                             <div className="h-4 w-4 rounded-full bg-emerald-500"></div>
                             Income
                         </Badge>
                         <Badge 
-                        variant={"outline"} 
-                        className='flex items-center gap-2 text-sm'>
+                            variant={"outline"} 
+                            className='flex items-center gap-2 text-sm'>
                             <div className="h-4 w-4 rounded-full bg-red-500"></div>
                             Expence
                         </Badge>
@@ -111,6 +113,27 @@ function History({ userSettings }: Props) {
                                         })
                                     }}
                                     />
+                                    <YAxis 
+                                    stroke="#888888"
+                                    fontSize={12}
+                                    tickLine={false}
+                                    axisLine={false}
+                                    />
+                                    <Bar 
+                                    dataKey={"income"} 
+                                    label="Income" 
+                                    fill="url(#incomeBar)" 
+                                    radius={4} 
+                                    className='cursor-pointer'/>
+                                    <Bar 
+                                    dataKey={"expence"} 
+                                    label="Expence" 
+                                    fill="url(#expenceBar)" 
+                                    radius={4} 
+                                    className='cursor-pointer'/>
+                                    <Tooltip cursor={{opacity:0.1}} content={props=>(
+                                        <CustomTooltip formatter={formatter} {...props}/>
+                                    )}/>
                                 </BarChart>
                             </ResponsiveContainer>
                         ) : (
@@ -130,3 +153,51 @@ function History({ userSettings }: Props) {
 }
 
 export default History
+
+
+function CustomTooltip({active,payload,formatter}:any){
+    if(!active || !payload || payload.length === 0)
+        return null;
+    const data = payload[0].payload;
+    const{expence,income}=data
+    return (
+        <div className="min-w-[300px] rounded border bg-background p-4">
+            <TooltipRow formatter={formatter} label="Expence"  value={expence} 
+            bgColor="bg-red-500" textColor="text-red-500"/>
+            <TooltipRow formatter={formatter} label="Income"  value={income} 
+            bgColor="bg-emerald-500" textColor="text-emerald-500"/>
+            <TooltipRow formatter={formatter} label="Balance"  value={income-expence} 
+            bgColor="bg-gray-500" textColor="text-foreground"/>
+        </div>
+    )
+}
+
+function TooltipRow({label,value,bgColor,textColor,formatter}:{
+    label :string;
+    value:number;
+    bgColor:string;
+    textColor:string;
+    formatter: Intl.NumberFormat;
+}){
+    const formattingFn = useCallback((value:number)=>{
+        return formatter.format(value)
+    },[formatter])
+    return(
+        <div className="flex items-center gap-2">
+            <div className={cn("h-4 w-4 rounded-full", bgColor)}/>
+            <div className="flex w-full justify-between">
+                <p className="text-sm text-muted-foreground">{label}</p>
+                <div className={cn("text-sm font-bold",textColor)}>
+                    <CountUp
+                     duration={0.5}
+                     preserveValue 
+                     end={value} 
+                     decimals={0}
+                     formattingFn={formattingFn}
+                     className='text-sm'
+                     />
+                </div>
+            </div>
+        </div>
+    )
+}
