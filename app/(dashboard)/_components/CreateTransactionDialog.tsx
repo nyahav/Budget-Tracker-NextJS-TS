@@ -74,7 +74,10 @@ function CreateTransactionDialog({trigger,type}:Props) {
             id: "creating-transaction",
             duration: 3000,
         });
-    
+        setTimeout(() => {
+            toast.dismiss("creating-transaction");
+        }, 5000);
+
         mutate ( {
             ...values,
             date: DateToUTCDate(values.date),

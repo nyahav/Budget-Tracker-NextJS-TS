@@ -30,7 +30,7 @@ export async function GET(request : Request){
     })
 
     if(!queryParams.success){
-        return Response.json(queryParams.error.message,{
+        return Response.json(queryParams.success,{
             status:400,
         })
     }

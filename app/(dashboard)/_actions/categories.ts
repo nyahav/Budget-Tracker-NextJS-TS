@@ -14,7 +14,7 @@ export async function CreateCategory(form: CreateCategorySchemaType) {
     const user = await currentUser();
     if (!user) {
         redirect("/sign-in");
-        return;
+        throw new Error("User not authenticated");
     }
 
     const { name, icon, type } = parseBody.data;

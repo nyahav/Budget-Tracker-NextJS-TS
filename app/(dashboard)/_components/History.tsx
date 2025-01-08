@@ -36,10 +36,16 @@ function History({ userSettings }: Props) {
     },[userSettings.currency])
 
     const historyDataQuery = useQuery({
-        queryKey:["overview","history",timeframe,period],
-        queryFn:()=> fetch(`api/history-data?timeframe=${timeframe}&year=${period.year}&month=${period.month}`)
-        .then((res) =>res.json())
-    })
+        
+        queryKey: ["overview", "history", timeframe, period],
+        queryFn: () => fetch(`api/history-data?timeframe=${timeframe}&year=${period.year}&month=${period.month}`)
+            .then((res) => {
+                if (!res.ok) {
+                    return Promise.reject(new Error("Failed to fetch history data"));
+                }
+                return res.json();
+            }),
+    });
 
     const dataAvailable = historyDataQuery.data && historyDataQuery.data.length > 0;
   return (
