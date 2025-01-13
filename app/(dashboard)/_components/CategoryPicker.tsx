@@ -20,7 +20,6 @@ export function CategoryPicker({ type,onChange }: Props) {
     const [value,setValue] = React.useState("false");
 
     useEffect(()=>{
-        console.log('CategoryPicker value:', value);
         if(!value) return;
         onChange(value);
     },[onChange,value])
@@ -74,8 +73,6 @@ export function CategoryPicker({ type,onChange }: Props) {
                             <CommandItem
                             key={category.name}
                             onSelect={() => {
-                                console.log('Fetched categories:', categoriesQuery.data);
-                                console.log('Fetched categories:', category.name);
                                 setValue(category.name);  // Update selected category name
                                 setOpen((prev) =>!prev);  // Close popover after selection
                             }}

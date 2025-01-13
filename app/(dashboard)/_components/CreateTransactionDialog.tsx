@@ -153,7 +153,7 @@ function CreateTransactionDialog({trigger,type}:Props) {
                         )}
                     />
 
-                        <FormField
+                    <FormField
                         control={form.control}
                         name="date"
                         render={({field}) =>(
@@ -168,6 +168,7 @@ function CreateTransactionDialog({trigger,type}:Props) {
                                       "w-[200px] pl-3 text-left font-normal",
                                       !field.value && "text-muted-foreground"
                                     )}
+                                    type="button"
                                   >
                                     {field.value ? (
                                       format(field.value, "PPP")
@@ -178,17 +179,22 @@ function CreateTransactionDialog({trigger,type}:Props) {
                                   </Button>
                                 </FormControl>
                               </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
+                              <PopoverContent className="w-auto p-0" align="start" style={{ zIndex: 1000 }}>
+                              <div className="relative">
                                 <Calendar
                                   mode="single"
                                   selected={field.value}
                                   onSelect={(value) =>{
                                     if(!value) return;
-                                    console.log("@@CALENDAR",value)
-                                    field.onChange(value);
+                                    const formattedDate = new Date(value);
+                                    console.log("@@CALENDAR", formattedDate);
+                                    field.onChange(formattedDate);
                                   }}
                                   initialFocus
+                                  disabled={false}
+                                  ISOWeek={true}
                                 />
+                                </div>
                               </PopoverContent>
                             </Popover>
                             <FormDescription>
