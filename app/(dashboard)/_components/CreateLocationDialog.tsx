@@ -4,7 +4,6 @@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel } from "@/components/ui/form";
-import { cn } from "@/lib/utils";
 import { CreateLocationSchema, CreateLocationSchemaType } from "@/schema/locations";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, PlusSquareIcon } from "lucide-react";
@@ -16,6 +15,7 @@ import { CreateLocation } from "../_actions/locations";
 import { Locations } from "@prisma/client";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
+import { v4 as uuidv4 } from 'uuid';
 import {
     Select,
     SelectContent,
@@ -23,12 +23,11 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+
 interface Props {
-    successCallBack: (location: Locations) => void;
+    //successCallBack: (location: Locations) => void;
     trigger?: ReactNode;
 }
-
-
 
 const propertyTypeOptions = [
     { value: "house", label: "House" },
@@ -42,49 +41,65 @@ const statusOptions = [
     { value: "active", label: "Active" },
     { value: "pending", label: "Pending" },
     { value: "sold", label: "Sold" },
-    { value: "rented", label: "Rented" }
+    { value: "rented", label: "Rented" } 
 ] as const;
 
-export type CreateLocationFn = (form: CreateLocationSchemaType) => Promise<Locations>;
+export type CreateLocationFn = (form: CreateLocationSchemaType) => void;
 
-function CreateLocationDialog({ successCallBack, trigger }: Props) {
+
+
+function CreateLocationDialog({  trigger }: Props) {
     const [open, setOpen] = useState(false);
+    //const [isLoading, setIsLoading] = useState(false);
+   
+    
     const form = useForm<CreateLocationSchemaType>({
         resolver: zodResolver(CreateLocationSchema),
+        defaultValues: {
+            id: uuidv4(),
+            address: "",
+            city: "",
+            state: "",
+            zipCode: "",
+            squareFeet: 10,
+            bedrooms: 3,
+            yearBuilt: 1990,
+            purchasePrice: 1000,
+            currentValue: 1000,
+            monthlyRent: 100,
+        },
     });
 
-    const queryClient = useQueryClient();
+    
     const theme = useTheme();
 
-    const { mutate, isPending } = useMutation({
-        mutationFn: CreateLocation as CreateLocationFn,
-        onSuccess: async (data: Locations) => {
-            form.reset();
-            toast.success(`Location ${data.address} created successfully 🎉`, {
-                id: 'location',
-            });
-            successCallBack(data);
-            await queryClient.invalidateQueries({
-                queryKey: ['locations'],
-            });
-            setOpen(false);
+    const createLocationMutation = useMutation({
+        mutationFn: (data: CreateLocationSchemaType) => {
+          return fetch('/api/locations', {
+            method: 'POST',
+            body: JSON.stringify(data),
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+        },
+        onSuccess: (data) => {
+        //   successCallBack(data);
+          setOpen(false);
+          toast.success('Location created successfully');
         },
         onError: () => {
-            toast.error('Something went wrong', {
-                id: 'location',
-            });
+          toast.error('Failed to create location');
         },
-    });
+      });
 
-    const onSubmit = useCallback(
-        (values: CreateLocationSchemaType) => {
-            toast.loading('Creating location...', {
-                id: 'location',
-            });
-            mutate(values);
-        },
-        [mutate]
-    );
+      const onSubmit = (data: CreateLocationSchemaType) => {
+        console.log("onsubmit");
+        
+        console.log(data);
+        createLocationMutation.mutate(data);
+      };
+
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -97,7 +112,7 @@ function CreateLocationDialog({ successCallBack, trigger }: Props) {
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent aria-describedby={undefined}>
                 <DialogHeader>
                     <DialogTitle>Create Location</DialogTitle>
                 </DialogHeader>
@@ -156,7 +171,7 @@ function CreateLocationDialog({ successCallBack, trigger }: Props) {
                         </div>
 
                         {/* Physical Characteristics - Row 2 */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <FormField
                                 control={form.control}
                                 name="squareFeet"
@@ -193,29 +208,7 @@ function CreateLocationDialog({ successCallBack, trigger }: Props) {
                                     </FormItem>
                                 )}
                             />
-                            <FormField
-                                control={form.control}
-                                name="propertyType"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Property Type</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select type" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                {propertyTypeOptions.map((option) => (
-                                                    <SelectItem key={option.value} value={option.value}>
-                                                        {option.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </FormItem>
-                                )}
-                            />
+                            
                         </div>
 
                         {/* Financial Details - Row 3 */}
@@ -283,6 +276,29 @@ function CreateLocationDialog({ successCallBack, trigger }: Props) {
                                     </FormItem>
                                 )}
                             />
+                            <FormField
+                                control={form.control}
+                                name="propertyType"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Property Type</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select type" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                {propertyTypeOptions.map((option) => (
+                                                    <SelectItem key={option.value} value={option.value}>
+                                                        {option.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </FormItem>
+                                )}
+                            />
                         </div>
                     </form>
                 </Form>
@@ -300,9 +316,16 @@ function CreateLocationDialog({ successCallBack, trigger }: Props) {
                         </Button>
                     </DialogClose>
                     <form onSubmit={form.handleSubmit(onSubmit)}>
-                        <Button type="submit" disabled={isPending}>
-                            {!isPending && "Create"}
-                            {isPending && <Loader2 className="animate-spin" />}
+                        <Button 
+                        type="submit" 
+                        onClick={() => console.log(form.errors)}
+                    
+                        >
+                            {createLocationMutation.status === 'pending' ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                'Create Location'
+                            )}
                         </Button>
                     </form>
                 </DialogFooter>

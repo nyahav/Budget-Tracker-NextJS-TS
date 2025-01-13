@@ -28,14 +28,16 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
-    <html lang="en" className="dark" style={{colorScheme:"dark"}}>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <Toaster richColors position="bottom-right"/>
-        <RootProviders>{children}</RootProviders>
-      </body>
-    </html>
+      
+        <html lang="en" className="dark" style={{ colorScheme: "dark" }}>
+          <body
+            className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+          >
+            <Toaster richColors position="bottom-right" />
+            <RootProviders>{children}</RootProviders>
+          </body>
+        </html>
+      
     </ClerkProvider>
   );
 }

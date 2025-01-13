@@ -101,7 +101,6 @@ type LocationData = {
     zipCode: string;
     squareFeet: number;
     bedrooms: number;
-    bathrooms: number;
     yearBuilt: number;
     purchasePrice: number;
     currentValue: number;
@@ -110,26 +109,25 @@ type LocationData = {
     status: string;
   }
 
-const csvConfig = mkConfig({
-  fieldSeparator: ",",
-  decimalSeparator: ".",
-  useKeysAsHeaders: true,
-  columnHeaders: [
-    "Address",
-    "City",
-    "State",
-    "Zip Code",
-    "Square Feet",
-    "Bedrooms",
-    "Bathrooms",
-    "Year Built",
-    "Purchase Price",
-    "Current Value",
-    "Monthly Rent",
-    "Property Type",
-    "Status"
-  ]
-});
+// const csvConfig = mkConfig({
+//   fieldSeparator: ",",
+//   decimalSeparator: ".",
+//   useKeysAsHeaders: true,
+//   columnHeaders: [
+//     "Address",
+//     "City",
+//     "State",
+//     "Zip Code",
+//     "Square Feet",
+//     "Bedrooms",
+//     "Year Built",
+//     "Purchase Price",
+//     "Current Value",
+//     "Monthly Rent",
+//     "Property Type",
+//     "Status"
+//   ]
+// });
 
 
 
@@ -148,12 +146,13 @@ function LocationsTable() {
   
     const history = useQuery<LocationData[]>({
       queryKey: ["location", "history"],
-      queryFn: () => fetch(`/api/location-history`).then((res) => res.json())
+      queryFn: () => fetch(`/api/location-history`).then((res) => res.json()),
     });
-    const handleExportCsv = (data:any[])=>{
-      const csv =generateCsv(csvConfig)(data);
-      download(csvConfig)(csv);
-    }
+
+    // const handleExportCsv = (data:any[])=>{
+    //   const csv =generateCsv(csvConfig)(data);
+    //   download(csvConfig)(csv);
+    // }
 
     const table = useReactTable<LocationData>({
         data: history.data ?? emptyData,
@@ -196,7 +195,7 @@ function LocationsTable() {
       <div className="w-full">
           <div className="flex flex-wrap items-end justify-between gap-2 py-4">
               <div className="flex flex-wrap gap-2">
-                  <Button
+                  {/* <Button
                       variant={"outline"}
                       size={"sm"}
                       className='ml-auto h-8 lg:flex'
@@ -208,7 +207,6 @@ function LocationsTable() {
                             zipCode: row.original.zipCode,
                             squareFeet: row.original.squareFeet,
                             bedrooms: row.original.bedrooms,
-                            bathrooms: row.original.bathrooms,
                             yearBuilt: row.original.yearBuilt,
                             purchasePrice: row.original.purchasePrice,
                             currentValue: row.original.currentValue,
@@ -223,7 +221,7 @@ function LocationsTable() {
                       }}>
                       <DownloadIcon className='h-4 w-4 mr-2' />
                       Export CSV
-                  </Button>
+                  </Button> */}
                   <DataTableViewOptions table={table} />
 
               </div>
