@@ -9,11 +9,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("POSTGRES_PRISMA_URL")
-  directUrl = env("POSTGRES_URL_NON_POOLING")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
-
 
 model UserSetting{
   userId String @id
@@ -47,7 +45,6 @@ model Transaction{
 model Locations {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
 
   address   String
@@ -58,7 +55,6 @@ model Locations {
 
   squareFeet Float
   bedrooms   Int
-  bathrooms  Float
   yearBuilt  Int
 
   purchasePrice Float
@@ -67,7 +63,6 @@ model Locations {
 
   propertyType String   // enum: house, apartment, condo, land, commercial
   status       String   // enum: active, pending, sold, rented
- 
 }
 
 

@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 export const CreateLocationSchema = z.object({
+
+    id: z.string(), //unique id   
     // Core location details
     address: z.string().min(1, "Address is required"),
     city: z.string().min(1, "City is required"),
@@ -23,3 +25,10 @@ export const CreateLocationSchema = z.object({
 });
 
 export type CreateLocationSchemaType = z.infer<typeof CreateLocationSchema>;
+
+
+export const DeleteLocationSchema = z.object({
+    id: z.string().uuid("Invalid location ID")
+});
+
+export type DeleteLocationSchemaType = z.infer<typeof DeleteLocationSchema>;

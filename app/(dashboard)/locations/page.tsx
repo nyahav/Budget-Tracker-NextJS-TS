@@ -5,6 +5,8 @@ import LocationsTable from './_components/LocationsTable'
 import { redirect } from 'next/navigation';
 import { currentUser } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import CreateLocationDialog from '../_components/CreateLocationDialog';
+import { Button } from '@/components/ui/button';
 
 async function page() {
   return (
@@ -19,7 +21,13 @@ async function page() {
     </div>
     {/**END HEADER */}
     <div className="container flex flex-col gap-4 p-4">
-    
+         <div className="flex items-center gap-3">
+            <CreateLocationDialog trigger={
+            <Button variant={"outline"} className='border-blue-500 bg-blue-950 text-white hover:bg-blue-700 hover:text-white'>
+              New Location 🏠
+            </Button> }
+            />
+          </div>
         <LocationsTable />
     </div>
     </>
