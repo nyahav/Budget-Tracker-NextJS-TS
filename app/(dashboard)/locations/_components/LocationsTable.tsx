@@ -144,10 +144,21 @@ function LocationsTable() {
     const [sorting, setSorting] = useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   
-    const history = useQuery<LocationData[]>({
+    const { data, isLoading, isError, error } = useQuery<LocationData[]>({
       queryKey: ["location", "history"],
-      queryFn: () => fetch(`/api/location-history`).then((res) => res.json()),
-    });
+      queryFn: async () => {
+          const response = await fetch('/api/location-history');
+          if (!response.ok) {
+              throw new Error(`API Error: ${response.statusText}`);
+          }
+          const data = await response.json();
+          console.log("Fetched data:", data); // Debug log
+          return data;
+      },
+      retry: 1,
+  });
+
+  console.log("Query state:", { data, isLoading, isError, error });
 
     // const handleExportCsv = (data:any[])=>{
     //   const csv =generateCsv(csvConfig)(data);
@@ -155,7 +166,7 @@ function LocationsTable() {
     // }
 
     const table = useReactTable<LocationData>({
-        data: history.data ?? emptyData,
+        data: data || [],
         columns,
         getCoreRowModel: getCoreRowModel(),
         state: {
@@ -176,125 +187,106 @@ function LocationsTable() {
         }
     })
 
-    if (!history.isLoading && (!history.data || history.data.length === 0)) {
-        return (
-          <div className="w-full">
+    if (isError) {
+      return (
+          <div className="w-full p-4 text-red-500">
+              Error loading locations: {error instanceof Error ? error.message : 'Unknown error'}
+          </div>
+      );
+  }
+
+  if (isLoading) {
+      return <SkeletonWrapper isLoading={true}>
+          <div className="h-96"></div>
+      </SkeletonWrapper>;
+  }
+
+
+  if (!data || data.length === 0) {
+    return (
+        <div className="w-full">
             <div className="flex flex-wrap items-end justify-between gap-2 py-4">
-              <div className="flex flex-wrap gap-2">
-                <DataTableViewOptions table={table} />
-              </div>
+                <div className="flex flex-wrap gap-2">
+                    <DataTableViewOptions table={table} />
+                </div>
             </div>
             <div className="rounded-md border">
-              <p className="text-center py-8 text-muted-foreground">No results.</p>
+                <p className="text-center py-8 text-muted-foreground">No locations found.</p>
             </div>
-          </div>
-        );
-      } 
-    else {
-  return (
-      <div className="w-full">
-          <div className="flex flex-wrap items-end justify-between gap-2 py-4">
-              <div className="flex flex-wrap gap-2">
-                  {/* <Button
-                      variant={"outline"}
-                      size={"sm"}
-                      className='ml-auto h-8 lg:flex'
-                      onClick={() => {
-                          const data = table.getFilteredRowModel().rows.map(row => ({
-                            address: row.original.address,
-                            city: row.original.city,
-                            state: row.original.state,
-                            zipCode: row.original.zipCode,
-                            squareFeet: row.original.squareFeet,
-                            bedrooms: row.original.bedrooms,
-                            yearBuilt: row.original.yearBuilt,
-                            purchasePrice: row.original.purchasePrice,
-                            currentValue: row.original.currentValue,
-                            monthlyRent: row.original.monthlyRent,
-                            propertyType: row.original.propertyType,
-                            status: row.original.status,
-                            formattedPurchasePrice: row.original.formattedPurchasePrice,
-                            formattedCurrentValue: row.original.formattedCurrentValue,
-                            formattedMonthlyRent: row.original.formattedMonthlyRent,
-                          }))
-                          handleExportCsv(data);
-                      }}>
-                      <DownloadIcon className='h-4 w-4 mr-2' />
-                      Export CSV
-                  </Button> */}
-                  <DataTableViewOptions table={table} />
+        </div>
+    );
+}
 
-              </div>
-          </div>
-    <SkeletonWrapper isLoading={history.isFetching}>
+// Show data
+return (
+    <div className="w-full">
+        <div className="flex flex-wrap items-end justify-between gap-2 py-4">
+            <div className="flex flex-wrap gap-2">
+                <DataTableViewOptions table={table} />
+            </div>
+        </div>
         <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    return (
-                      <TableHead key={header.id}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </TableHead>
-                    )
-                  })}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
+            <Table>
+                <TableHeader>
+                    {table.getHeaderGroups().map((headerGroup) => (
+                        <TableRow key={headerGroup.id}>
+                            {headerGroup.headers.map((header) => (
+                                <TableHead key={header.id}>
+                                    {header.isPlaceholder
+                                        ? null
+                                        : flexRender(
+                                            header.column.columnDef.header,
+                                            header.getContext()
+                                        )}
+                                </TableHead>
+                            ))}
+                        </TableRow>
                     ))}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={columns.length} className="h-24 text-center">
-                    No results.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                </TableHeader>
+                <TableBody>
+                    {table.getRowModel().rows?.length ? (
+                        table.getRowModel().rows.map((row) => (
+                            <TableRow
+                                key={row.id}
+                                data-state={row.getIsSelected() && "selected"}
+                            >
+                                {row.getVisibleCells().map((cell) => (
+                                    <TableCell key={cell.id}>
+                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                    </TableCell>
+                                ))}
+                            </TableRow>
+                        ))
+                    ) : (
+                        <TableRow>
+                            <TableCell colSpan={columns.length} className="h-24 text-center">
+                                No results.
+                            </TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
         </div>
         <div className="flex items-center justify-end space-x-2 py-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-        >
-          Previous
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          Next
-        </Button>
-      </div>
-        </SkeletonWrapper>
+            <Button
+                variant="outline"
+                size="sm"
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+            >
+                Previous
+            </Button>
+            <Button
+                variant="outline"
+                size="sm"
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+            >
+                Next
+            </Button>
         </div>
-        
-      )
-    }
-  
+    </div>
+);
 }
 
 export default LocationsTable

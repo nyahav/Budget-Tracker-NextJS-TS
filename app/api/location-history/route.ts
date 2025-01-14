@@ -21,7 +21,58 @@ export async function GET(request: Request) {
     }
 }
 
+export async function POST(request: Request) {
+    const user = await currentUser();
+    if (!user) {
+        return redirect("/sign-in");
+    }
+
+    try {
+        const data = await request.json();
+        console.log("Incoming data:", data);
+        if (!data.purchasePrice || !data.currentValue) {
+            throw new Error("Missing required fields");
+        }
+        const newLocation = await prisma.locations.create({
+            data: {
+                ...data,
+                userId: user.id,
+            }
+        });
+
+        const userSettings = await prisma.userSetting.findUnique({
+            where: { userId: user.id }
+        });
+
+        if (!userSettings) {
+            throw new Error("User settings not found");
+        }
+
+        const formatter = GetFormatterForCurrency(userSettings.currency);
+
+        // Return formatted location data
+        return Response.json({
+            ...newLocation,
+            formattedPurchasePrice: formatter.format(newLocation.purchasePrice),
+            formattedCurrentValue: formatter.format(newLocation.currentValue),
+            formattedMonthlyRent: newLocation.monthlyRent ? 
+                formatter.format(newLocation.monthlyRent) : 'N/A'
+        });
+    } 
+    catch (error) {
+        console.error("Failed to create location. Error details:", {
+            error,
+            userId: user.id
+        });
+        return Response.json(
+            { error: error instanceof Error ? error.message : "Failed to create location" },
+            { status: 500 }
+        );
+    }
+}
+
 export type getLocationsHistoryResponseType = Awaited<ReturnType<typeof getLocationsHistory>>
+
 async function getLocationsHistory(userId: string) {
     const userSettings = await prisma.userSetting.findUnique({
         where: {
@@ -39,7 +90,7 @@ async function getLocationsHistory(userId: string) {
             userId,
         },
         orderBy: {
-            createdAt: "desc"  // Show newest properties first
+            createdAt: "desc"
         }
     })
 

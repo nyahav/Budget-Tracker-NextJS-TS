@@ -138,6 +138,8 @@ const csvConfig = mkConfig({
 function TransactionTable({from,to}:Props) {
     const [sorting,setSorting]=useState<SortingState>([]);
     const [columnFilters,setColumnFilters]=useState<ColumnFiltersState>([]);
+    const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
     const history = useQuery<getTransactionHistoryResponseType>({
         queryKey:["transaction","history",from,to],
@@ -297,30 +299,42 @@ function TransactionTable({from,to}:Props) {
 
 export default TransactionTable
 
-function RowActions({transaction}:{transaction:TransactionHistoryRow}){
-  const [showDeleteDialog,setshowDeleteDialog] = useState(false);
-  return(
+function RowActions({transaction}: {transaction: TransactionHistoryRow}) {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  return (
     <>
-    <DeleteTransactionDialog open={showDeleteDialog} setOpen={setshowDeleteDialog} transactionID={transaction.id}/>
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant={"ghost"} className='h-8 w-8 p-0'>
-          <span className="sr-only">Open Menu</span>
-          <MoreHorizontal className='h-4 w-4'/>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align='end'>
-        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-        <DropdownMenuSeparator/>
-        <DropdownMenuItem 
-        className='flex items-center gap-2' 
-        onSelect={()=>{setshowDeleteDialog((prev)=>!prev)}}
-        >
-          <TrashIcon className='h-4 w-4 text-muted-foreground'/>
-          Delete
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      {showDeleteDialog && (
+        <DeleteTransactionDialog
+          open={showDeleteDialog}
+          setOpen={setShowDeleteDialog}
+          transactionId={transaction.id}
+          from={new Date(transaction.date)}
+          to={new Date(transaction.date)}
+        />
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <span className="sr-only">Open Menu</span>
+            <MoreHorizontal className="h-4 w-4"/>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="flex items-center gap-2"
+            onSelect={(e) => {
+              e.preventDefault();
+              setShowDeleteDialog(true);
+            }}
+          >
+            <TrashIcon className="h-4 w-4 text-muted-foreground" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </>
-  )
+  );
 }

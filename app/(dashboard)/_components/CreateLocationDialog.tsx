@@ -74,28 +74,38 @@ function CreateLocationDialog({  trigger }: Props) {
     const theme = useTheme();
 
     const createLocationMutation = useMutation({
-        mutationFn: (data: CreateLocationSchemaType) => {
-          return fetch('/api/locations', {
+        mutationFn: async(data: CreateLocationSchemaType) => {
+            console.log("Sending data to API:", data);
+            const response = await  fetch('/api/location-history', {
             method: 'POST',
             body: JSON.stringify(data),
             headers: {
               'Content-Type': 'application/json',
             },
           });
+          if(response.ok){console.log("response is ok")}
+          if (!response.ok) {
+            const errorData = await response.json();
+            console.error("API Error Response:", errorData); 
+            throw new Error(errorData.error || 'Failed to create location');
+          }
+          
+          return response.json();
         },
         onSuccess: (data) => {
         //   successCallBack(data);
+          console.log("Success response:", data);
           setOpen(false);
           toast.success('Location created successfully');
         },
         onError: () => {
+          
           toast.error('Failed to create location');
         },
       });
 
       const onSubmit = (data: CreateLocationSchemaType) => {
         console.log("onsubmit");
-        
         console.log(data);
         createLocationMutation.mutate(data);
       };
@@ -318,8 +328,6 @@ function CreateLocationDialog({  trigger }: Props) {
                     <form onSubmit={form.handleSubmit(onSubmit)}>
                         <Button 
                         type="submit" 
-                        onClick={() => console.log(form.errors)}
-                    
                         >
                             {createLocationMutation.status === 'pending' ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
