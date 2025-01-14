@@ -41,50 +41,129 @@ const emptyData: LocationData[] = [];
 type LocationHistoryRow = getLocationsHistoryResponseType[0];
 
 const columns: ColumnDef<LocationData>[] = [
-    {
-        accessorKey: "address",
-        header: ({column}) => (                   
-            <DataTableColumnHeader column={column} title="Location"/>
-        ),
-        filterFn: (row, id, value) => {
-            return value.includes(row.getValue(id))
-        },
-        cell: ({row}) => (
-            <div className="flex gap-2 capitalize">
-                {row.original.id}
-                <div className="capitalize">
-                    {row.original.address}
-                </div>
-            </div>
-        )
+  {
+    accessorKey: "address",
+    header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Address" />
+    ),
+    filterFn: (row, id, value) => {
+        return value.includes(row.getValue(id));
     },
-   
-    {
-        accessorKey: "createdAt",
-        header: "Date",
-        cell: ({row}) => {
-            const date = new Date(row.original.createdAt);
-            const formattedDate = date.toLocaleDateString("default", {
-                timeZone: "UTC",
-                year: "numeric",
-                month: "2-digit",
-                day: "2-digit"
-            })
-            return (
-                <div className="text-muted-foreground">
-                    {formattedDate}
-                </div>
-            )
-        }
+    cell: ({ row }) => (
+        <div className="flex gap-2 capitalize">
+            {row.original.address}
+        </div>
+    ),
+},
+// City column
+{
+    accessorKey: "city",
+    header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="City" />
+    ),
+    cell: ({ row }) => <div className="capitalize">{row.original.city}</div>,
+},
+// State column
+{
+    accessorKey: "state",
+    header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="State" />
+    ),
+    cell: ({ row }) => <div className="capitalize">{row.original.state}</div>,
+},
+// Zip Code column
+{
+    accessorKey: "zipCode",
+    header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Zip Code" />
+    ),
+    cell: ({ row }) => <div>{row.original.zipCode}</div>,
+},
+// Square Feet column
+{
+    accessorKey: "squareFeet",
+    header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Square Feet" />
+    ),
+    cell: ({ row }) => <div>{row.original.squareFeet}</div>,
+},
+// Bedrooms column
+{
+    accessorKey: "bedrooms",
+    header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Bedrooms" />
+    ),
+    cell: ({ row }) => <div>{row.original.bedrooms}</div>,
+},
+// Year Built column
+{
+    accessorKey: "yearBuilt",
+    header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Year Built" />
+    ),
+    cell: ({ row }) => <div>{row.original.yearBuilt}</div>,
+},
+// Formatted Purchase Price column
+{
+    accessorKey: "formattedPurchasePrice",
+    header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Purchase Price" />
+    ),
+    cell: ({ row }) => <div>{row.original.formattedPurchasePrice}</div>,
+},
+// Formatted Current Value column
+{
+    accessorKey: "formattedCurrentValue",
+    header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Current Value" />
+    ),
+    cell: ({ row }) => <div>{row.original.formattedCurrentValue}</div>,
+},
+// Formatted Monthly Rent column
+{
+    accessorKey: "formattedMonthlyRent",
+    header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Monthly Rent" />
+    ),
+    cell: ({ row }) => <div>{row.original.formattedMonthlyRent}</div>,
+},
+// Property Type column
+{
+    accessorKey: "propertyType",
+    header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Property Type" />
+    ),
+    cell: ({ row }) => <div className="capitalize">{row.original.propertyType}</div>,
+},
+// Status column
+{
+    accessorKey: "status",
+    header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Status" />
+    ),
+    cell: ({ row }) => <div className="capitalize">{row.original.status}</div>,
+},
+// Date column
+{
+    accessorKey: "createdAt",
+    header: "Date",
+    cell: ({ row }) => {
+        const date = new Date(row.original.createdAt);
+        const formattedDate = date.toLocaleDateString("default", {
+            timeZone: "UTC",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+        });
+        return <div className="text-muted-foreground">{formattedDate}</div>;
     },
-    
-    {
-        id: "actions",
-        enableHiding: false,
-        cell: ({row}) => (
-            <RowActions location={row.original}/>
-        )
-    }
+},
+// Actions column
+{
+    id: "actions",
+    enableHiding: false,
+    cell: ({ row }) => <RowActions location={row.original} />,
+},
 ];
 
 type LocationData = {
@@ -152,13 +231,13 @@ function LocationsTable() {
               throw new Error(`API Error: ${response.statusText}`);
           }
           const data = await response.json();
-          console.log("Fetched data:", data); // Debug log
+          
           return data;
       },
       retry: 1,
   });
 
-  console.log("Query state:", { data, isLoading, isError, error });
+
 
     // const handleExportCsv = (data:any[])=>{
     //   const csv =generateCsv(csvConfig)(data);
