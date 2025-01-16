@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 import { Category } from '@prisma/client'
 import DeleteCategoryDialog from '../_components/DeleteCategoryDialog'
 
-function page() {
+function ManagePage() {
   return (
     <>
     <div className="border-b bg-card">
@@ -44,7 +44,7 @@ function page() {
   )
 }
 
-export default page
+export default ManagePage
 
 function CategoryList({type}:{type:TransactionType}){
     const categoryQuery = useQuery({

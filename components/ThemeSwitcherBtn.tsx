@@ -12,8 +12,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-export function ThemeSwitcherBtn() {
+
+interface ThemeSwitcherBtnProps {
+  defaultTheme?: 'light' | 'dark' | 'system'
+}
+
+
+export function ThemeSwitcherBtn({ defaultTheme }: ThemeSwitcherBtnProps) {
   const { setTheme } = useTheme()
+
+  React.useEffect(() => {
+    if (defaultTheme) {
+      setTheme(defaultTheme)
+    }
+  }, [defaultTheme, setTheme])
 
   return (
     <DropdownMenu>

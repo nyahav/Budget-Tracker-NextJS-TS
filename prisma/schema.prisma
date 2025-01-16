@@ -86,3 +86,32 @@ model YearHistory{
 
   @@id([month,year,userId])
 }
+
+
+model RealEstate {
+  id            String   @id @default(cuid()) 
+  status        Status  
+  linkToken     String   
+  estateType    String   
+  street        String   
+  neighborhood  String   
+  settlement    String   
+  rooms         Int      
+  floor         String   
+  squareMeters  Int      
+  updatedAt     DateTime 
+  price         String   
+  createdAt     DateTime @default(now()) 
+  items         Json     // New field to store real estate items (e.g., array of objects)
+  search_params Json     // New field to store search parameters (e.g., object with query parameters)
+  total_pages   Int      // New field to store total number of pages
+  last_updated  DateTime
+
+}
+
+enum Status {
+  new
+  updated
+  default
+  removed
+}
