@@ -5,6 +5,78 @@ import { getDaysInMonth } from "date-fns";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+//swager
+/**
+ * @swagger
+ * /api/history-data:
+ *   get:
+ *     summary: Retrieve historical transaction data
+ *     description: Get aggregated transaction data based on timeframe (month/year)
+ *     tags:
+ *       - Transactions
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: timeframe
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [month, year]
+ *         description: Time period for data aggregation
+ *       - in: query
+ *         name: month
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 0
+ *           maximum: 11
+ *         description: Month (0-11) for data filtering
+ *       - in: query
+ *         name: year
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 2000
+ *           maximum: 2500
+ *         description: Year for data filtering
+ *     responses:
+ *       200:
+ *         description: Historical data aggregation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 income:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       date: 
+ *                         type: string
+ *                         format: date
+ *                       amount:
+ *                         type: number
+ *                 expenses:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       date:
+ *                         type: string
+ *                         format: date
+ *                       amount:
+ *                         type: number
+ *       400:
+ *         description: Invalid query parameters
+ *       401:
+ *         description: Unauthorized - User not authenticated
+ *       500:
+ *         description: Server error
+ */
+
+
 
 const getHistoryDataSchema = z.object({
     timeframe: z.enum(["month","year"]),

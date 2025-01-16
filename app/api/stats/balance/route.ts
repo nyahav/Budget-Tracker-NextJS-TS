@@ -4,6 +4,58 @@ import { currentUser } from "@clerk/nextjs/server";
 import { ToastClose } from "@radix-ui/react-toast";
 import { redirect } from "next/navigation";
 
+
+//swagger
+/**
+ * @swagger
+ * /api/stats/balance:
+ *   get:
+ *     summary: Get balance statistics
+ *     description: Retrieve total income and expenses for a specified time period
+ *     tags:
+ *       - Statistics
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: from
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Start date for statistics
+ *       - in: query
+ *         name: to
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: End date for statistics
+ *     responses:
+ *       200:
+ *         description: Balance statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 expense:
+ *                   type: number
+ *                   description: Total expenses
+ *                 income:
+ *                   type: number
+ *                   description: Total income
+ *               example:
+ *                 expense: 1500.00
+ *                 income: 3000.00
+ *       400:
+ *         description: Invalid date parameters
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+
 export async function GET(request:Request){
     const user = await currentUser();
     if(!user){

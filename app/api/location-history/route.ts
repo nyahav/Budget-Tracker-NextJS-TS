@@ -4,6 +4,85 @@ import { overviewQuerySchema } from "@/schema/overview";
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
+
+//swagger
+/**
+ * @swagger
+ * /api/location-history:
+ *   get:
+ *     summary: Retrieve location history
+ *     description: Get all real estate locations for the authenticated user
+ *     tags:
+ *       - Locations
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of locations
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   address:
+ *                     type: string
+ *                   city:
+ *                     type: string
+ *                   state:
+ *                     type: string
+ *                   zipCode:
+ *                     type: string
+ *                   squareFeet:
+ *                     type: number
+ *                   bedrooms:
+ *                     type: integer
+ *                   yearBuilt:
+ *                     type: integer
+ *                   purchasePrice:
+ *                     type: number
+ *                   currentValue:
+ *                     type: number
+ *                   monthlyRent:
+ *                     type: number
+ *                   propertyType:
+ *                     type: string
+ *                     enum: [house, apartment, condo, land, commercial]
+ *                   status:
+ *                     type: string
+ *                     enum: [active, pending, sold, rented]
+ *       401:
+ *         description: Unauthorized - User not authenticated
+ *       500:
+ *         description: Server error
+ *   post:
+ *     summary: Create new location
+ *     description: Add a new real estate location
+ *     tags:
+ *       - Locations
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateLocationRequest'
+ *     responses:
+ *       201:
+ *         description: Location created successfully
+ *       400:
+ *         description: Invalid request body
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+
+
 export async function GET(request: Request) {
     const user = await currentUser();
     if (!user) {
