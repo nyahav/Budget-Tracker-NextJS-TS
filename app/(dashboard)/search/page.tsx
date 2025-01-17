@@ -1,150 +1,126 @@
-"use client"
+// app/page.tsx
+'use client';
 
-import { useState } from 'react'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-} from "@/components/ui/form"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-
-const searchSchema = z.object({
-  dealType: z.enum(['rent', 'forsale']),
-  settlement: z.string().min(2),
-  minPrice: z.string().transform(Number),
-  maxPrice: z.string().transform(Number),
-})
-
-type SearchFormValues = z.infer<typeof searchSchema>
+import { useState, useEffect } from 'react';
+import Image from 'next/image';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+interface Property {
+  id: string;
+  title: string;
+  price: number;
+  rooms: number;
+  baths: number;
+  area: number;
+  coverPhoto: {
+    url: string;
+  };
+  phoneNumber: {
+    mobile: string;
+  };
+  location: string[];
+}
 
 export default function SearchPage() {
-  const [isLoading, setIsLoading] = useState(false)
-
-  const form = useForm<SearchFormValues>({
-    resolver: zodResolver(searchSchema),
-    defaultValues: {
-      dealType: 'rent',
-      settlement: '',
-      minPrice: 0,
-      maxPrice: 1000000,
-    },
-  })
-
-  async function onSubmit(data: SearchFormValues) {
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  
+  const fetchProperties = async ( page: number, hitsPerPage: number) => {
     try {
-      setIsLoading(true)
-      console.log('Search initiated with params:', data)
-
-      const searchParams = new URLSearchParams({
-        dealType: data.dealType,
-        settlement: data.settlement,
-        minPrice: data.minPrice.toString(),
-        maxPrice: data.maxPrice.toString(),
-        page: '1',
-      })
-
-      console.log('Fetching from API with params:', searchParams.toString())
-      
-      const response = await fetch(`/api/scraper/search?${searchParams}`)
-      const searchResults = await response.json()
-      
-      console.log('Search results:', searchResults)
-
-      if (!response.ok) {
-        throw new Error(searchResults.message || 'Search failed')
-      }
-
-    } catch (error) {
-      console.error('Search error:', error)
+      setLoading(true);
+      const response = await fetch(`/api/properties?purpose=for-sale&page=${page}`);
+      const data = await response.json();
+      return data;
+    } catch (err) {
+      setError('Failed to fetch properties');
     } finally {
-      setIsLoading(false)
+      setLoading(false);
     }
-  }
+  };
+
+  useEffect(() => {
+    console.log('Page changed to:', page);
+    loadProperties();
+  }, [page]);
+
+  const loadProperties = async () => {
+    setLoading(true);
+    try {
+      console.log('Fetching properties for page:', page);
+      const data = await fetchProperties(page, 9);
+      console.log('Fetched data:', data);
+      setProperties(data.hits || []);
+      setTotalPages(Math.ceil(data.nbHits / 9));
+    } catch (err) {
+      console.error('Error loading properties:', err);
+      setError('Failed to fetch properties');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    console.log('Changing to page:', newPage);
+    setPage(newPage);
+  };
+
+  if (loading) return <div className="text-center p-8">Loading...</div>;
+  if (error) return <div className="text-center p-8 text-red-500">{error}</div>;
 
   return (
-    <div className="container mx-auto py-8">
-      <h1 className="text-2xl font-bold mb-6">Real-Estate Search using Yad2</h1>
-      
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <FormField
-            control={form.control}
-            name="dealType"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Deal Type</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select deal type" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="rent">Rent</SelectItem>
-                    <SelectItem value="forsale">Buy</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormItem>
-            )}
-          />
+    <div className="container mx-auto px-4 py-8">
 
-          <FormField
-            control={form.control}
-            name="settlement"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>City</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter city name" {...field} />
-                </FormControl>
-              </FormItem>
-            )}
-          />
+      {/* Property Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {properties.map((property) => (
+          <div
+            key={property.id}
+            className="border rounded-lg overflow-hidden shadow-lg"
+          >
+            <div className="relative h-48 w-full">
+              <Image
+                src={property.coverPhoto?.url || "/placeholder.jpg"}
+                alt={property.title}
+                fill
+                className="object-cover"
+              />
+            </div>
+            <div className="p-4">
+              <h3 className="font-bold text-lg mb-2">{property.title}</h3>
+              <p className="text-gray-700 mb-2">
+                Price: AED {property.price.toLocaleString()}
+              </p>
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>{property.rooms} Rooms</span>
+                <span>{property.baths} Baths</span>
+                <span>{property.area.toFixed(0)} sqft</span>
+                    </div>
+                </div>
+            </div>
+        ))}
+            </div>
 
-          <FormField
-            control={form.control}
-            name="minPrice"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Minimum Price</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="Enter minimum price" {...field} />
-                </FormControl>
-              </FormItem>
-            )}
-          />
 
-          <FormField
-            control={form.control}
-            name="maxPrice"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Maximum Price</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="Enter maximum price" {...field} />
-                </FormControl>
-              </FormItem>
-            )}
-          />
+            <div className="mt-8 flex justify-center">
+                <Pagination className="space-x-2">
+                    {page > 1 && (
+                        <PaginationPrevious
+                            onClick={() => setPage(page - 1)}
+                            aria-label="Previous Page"
+                        />
+                    )}
 
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? 'Searching...' : 'Search'}
-          </Button>
-        </form>
-      </Form>
-    </div>
-  )
-}
+                    {page < totalPages && (
+                        <PaginationNext
+                            onClick={() => setPage(page + 1)}
+                            aria-label="Next Page"
+                        />
+                    )}
+                </Pagination>
+            </div>
+        </div>
+    );
+};
+

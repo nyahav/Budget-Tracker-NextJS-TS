@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true, // Ignores TypeScript errors during build
   },
+
+  images: {
+    domains: ['bayut-production.s3.eu-central-1.amazonaws.com'],
+  },
 };
 
 export default nextConfig;

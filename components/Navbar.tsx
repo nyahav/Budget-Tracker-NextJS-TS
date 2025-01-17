@@ -25,7 +25,8 @@ const items =[
     {label: "Transactions", link: "/transactions"},
     {label: "Locations", link: "/locations"},
     {label: "Manage", link: "/manage"},
-    {label: "Search location", link: "/search"},
+    {label: "Search To Buy", link: "/search"},
+    {label: "Search To Rent", link: "/searchRent"},
 ]
 
 function MobileNavbar(){
