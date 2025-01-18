@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchProperties, fetchPropertyDetails } from '@/app/(dashboard)/search/realEstate';
+import { fetchProperties, fetchPropertyDetails } from '@/app/(dashboard)/searchBuy/realEstate';
 
 export async function GET(request: Request) {
   try {

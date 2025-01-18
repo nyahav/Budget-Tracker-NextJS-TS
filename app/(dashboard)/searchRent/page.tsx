@@ -105,10 +105,10 @@ export default function SearchPage() {
 
                         {/* Bottom Section with Price, Rooms, Baths, and Sqft */}
                         <div className="p-4 flex justify-between items-center border-t">
-                            <p className="text-green-800 mb-2">
+                            <p className="text-white-800 mb-2 bg-green-500 rounded-md p-1 border-black shadow-md">
                                 Price: AED {property.price.toLocaleString()}
                             </p>
-                            <div className="flex gap-4 text-sm text-gray-600">
+                            <div className="flex gap-4 text-sm text-white-600">
                                 <span>{property.rooms} Rooms</span>
                                 <span>{property.baths} Baths</span>
                                 <span>{property.area.toFixed(0)} sqft</span>
@@ -138,8 +138,8 @@ export default function SearchPage() {
                               />
                           </div>
                           <p className="text-green-800">Price: AED {selectedProperty.price.toLocaleString()}</p>
-                          <p className="text-gray-700">{selectedProperty.rooms} Rooms, {selectedProperty.baths} Baths</p>
-                          <p className="text-gray-700">Area: {selectedProperty.area.toFixed(0)} sqft</p>
+                          <p className="text-white-700 justify-between w-full">{selectedProperty.rooms} Rooms, {selectedProperty.baths} Baths, Area: {selectedProperty.area.toFixed(0)} sqft</p>
+                          
                           
                       </div>
                   )}

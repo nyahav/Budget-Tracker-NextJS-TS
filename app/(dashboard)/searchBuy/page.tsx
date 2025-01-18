@@ -4,6 +4,8 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+
 interface Property {
   id: string;
   title: string;
@@ -26,6 +28,8 @@ export default function SearchPage() {
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   
   const fetchProperties = async ( page: number, hitsPerPage: number) => {
     try {
@@ -66,6 +70,11 @@ export default function SearchPage() {
     setPage(newPage);
   };
 
+  const handleItemClick = (property: Property) => {
+    setSelectedProperty(property);
+    setIsDialogOpen(true);
+  };
+
   if (loading) return <div className="text-center p-8">Loading...</div>;
   if (error) return <div className="text-center p-8 text-red-500">{error}</div>;
 
@@ -78,6 +87,7 @@ export default function SearchPage() {
           <div
             key={property.id}
             className="border rounded-lg overflow-hidden shadow-lg"
+            onClick={() => handleItemClick(property)}
           >
             <div className="relative h-48 w-full">
               <Image
@@ -101,7 +111,33 @@ export default function SearchPage() {
             </div>
         ))}
             </div>
-
+            {/* Dialog for Property Details */}
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>{selectedProperty?.title}</DialogTitle>
+                        <DialogDescription>
+                          Detailed information about the property.
+                      </DialogDescription>
+                  </DialogHeader>
+                  {selectedProperty && (
+                      <div className="space-y-4">
+                          <div className="relative h-64 w-full">
+                              <Image
+                                  src={selectedProperty.coverPhoto?.url || "/placeholder.jpg"}
+                                  alt={selectedProperty.title}
+                                  fill
+                                  className="object-cover rounded-lg"
+                              />
+                          </div>
+                          <p className="text-green-800">Price: AED {selectedProperty.price.toLocaleString()}</p>
+                          <p className="text-white-700 justify-between w-full">{selectedProperty.rooms} Rooms, {selectedProperty.baths} Baths, Area: {selectedProperty.area.toFixed(0)} sqft</p>
+                          
+                          
+                      </div>
+                  )}
+              </DialogContent>
+          </Dialog>
 
             <div className="mt-8 flex justify-center">
                 <Pagination className="space-x-2">
