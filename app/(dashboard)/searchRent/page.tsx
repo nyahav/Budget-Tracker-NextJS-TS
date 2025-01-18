@@ -7,6 +7,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Property } from '@/lib/propertyType';
 
+//const rentProperty = await getProperty(id, 'rent');
 export type PropertyPurpose = 'for-rent' | 'for-sale';
 
 export default function SearchPage() {
