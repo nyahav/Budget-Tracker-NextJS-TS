@@ -5,22 +5,9 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Property } from '@/lib/propertyType';
 
-interface Property {
-  id: string;
-  title: string;
-  price: number;
-  rooms: number;
-  baths: number;
-  area: number;
-  coverPhoto: {
-    url: string;
-  };
-  phoneNumber: {
-    mobile: string;
-  };
-  location: string[];
-}
+export type PropertyPurpose = 'for-rent' | 'for-sale';
 
 export default function SearchPage() {
   const [properties, setProperties] = useState<Property[]>([]);
@@ -34,11 +21,12 @@ export default function SearchPage() {
   const fetchProperties = async ( page: number, hitsPerPage: number) => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/properties?purpose=for-sale&page=${page}`);
+      const purpose: PropertyPurpose = 'for-sale';
+      const response = await fetch(`/api/properties/rapidapi?purpose=${purpose}&page=${page}&hitsPerPage=${hitsPerPage}`);
       const data = await response.json();
       return data;
     } catch (err) {
-      setError('Failed to fetch properties');
+      setError('Failed to fetch properties!!!');
     } finally {
       setLoading(false);
     }
@@ -52,14 +40,54 @@ export default function SearchPage() {
   const loadProperties = async () => {
     setLoading(true);
     try {
-      console.log('Fetching properties for page:', page);
       const data = await fetchProperties(page, 9);
-      console.log('Fetched data:', data);
-      setProperties(data.hits || []);
+      console.log('Received data:', data);
+      if (!data || !data.hits) {
+        console.error('Invalid data structure:', data);
+        setError('Invalid data received from server');
+        return;
+      }
+      // Process each property's image
+      const processedProperties = await Promise.all(
+        data.hits.map(async (property: Property) => {
+          try {
+            console.log('Processing property:', property.id);
+            console.log('Original image URL:', property.coverPhoto.url);
+            
+            const apiUrl = `/api/properties/s3?propertyId=${property.id}&imageUrl=${encodeURIComponent(property.coverPhoto.url)}&purpose=buy`;
+            console.log('Calling S3 API:', apiUrl);
+            
+            const response = await fetch(apiUrl);
+            const s3Data = await response.json();
+            console.log('S3 API Response:', s3Data);
+      
+            if (s3Data.error) {
+              console.error('S3 API Error:', s3Data.error);
+              return property;
+            }
+      
+            const finalUrl = s3Data.imageUrl;
+            console.log('Using URL:', finalUrl);
+      
+            return {
+              ...property,
+              coverPhoto: {
+                ...property.coverPhoto,
+                url: finalUrl || property.coverPhoto.url
+              }
+            };
+          } catch (err) {
+            console.error('Error processing property:', property.id, err);
+            return property;
+          }
+        })
+      );
+  
+      setProperties(processedProperties);
       setTotalPages(Math.ceil(data.nbHits / 9));
     } catch (err) {
       console.error('Error loading properties:', err);
-      setError('Failed to fetch properties');
+      setError('Failed to fetch properties!');
     } finally {
       setLoading(false);
     }
@@ -78,6 +106,21 @@ export default function SearchPage() {
   if (loading) return <div className="text-center p-8">Loading...</div>;
   if (error) return <div className="text-center p-8 text-red-500">{error}</div>;
 
+
+  // async function getProperty(id: string): Promise<Property> {
+  //   // נסה להביא מ-cache
+  //   const cached = await getPropertyFromCache(id);
+  //   if (cached) return cached;
+  
+  //   // אם לא נמצא ב-cache, הבא מ-DB
+  //   const property = await prisma.property.findUnique({ where: { id } });
+  //   if (!property) throw new Error('Property not found');
+  
+  //   // הוסף ל-cache
+  //   await redis.set(`property:${id}`, JSON.stringify(property));
+  
+  //   return property;
+  // }
   return (
     <div className="container mx-auto px-4 py-8">
 
@@ -95,6 +138,10 @@ export default function SearchPage() {
                 alt={property.title}
                 fill
                 className="object-cover"
+                onError={(e) => {
+                  console.error('Image load error:', e);
+                  e.currentTarget.src = "/placeholder.jpg";
+                }}
               />
             </div>
             <div className="p-4">

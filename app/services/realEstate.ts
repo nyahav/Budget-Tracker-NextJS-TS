@@ -1,4 +1,11 @@
+//service file handles the business logic of the application. 
+// It fetches data from the API 
+//keeping it as seperation of concerns.
+
+
 import { z } from 'zod';
+import {Property } from '../../lib/propertyType';
+
 
 // Validate environment variables
 if (!process.env.RAPID_API_KEY || !process.env.RAPID_API_HOST) {
@@ -10,15 +17,16 @@ const RAPID_API_HOST = process.env.RAPID_API_HOST;
 
 // Types for API response
 interface PropertyResponse {
-  hits: Array<any>;
+  hits: Property[]; 
   nbHits: number;
   page: number;
   nbPages: number;
   hitsPerPage: number;
 }
+type PropertyPurpose = 'for-rent' | 'for-sale';
 
 export const fetchProperties = async (
-  purpose = 'for-rent', 
+  purpose : PropertyPurpose, 
   page = 1, 
   hitsPerPage = 9
 ): Promise<PropertyResponse> => {

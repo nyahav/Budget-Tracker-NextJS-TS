@@ -88,30 +88,47 @@ model YearHistory{
 }
 
 
-model RealEstate {
-  id            String   @id @default(cuid()) 
-  status        Status  
-  linkToken     String   
-  estateType    String   
-  street        String   
-  neighborhood  String   
-  settlement    String   
-  rooms         Int      
-  floor         String   
-  squareMeters  Int      
-  updatedAt     DateTime 
-  price         String   
-  createdAt     DateTime @default(now()) 
-  items         Json     // New field to store real estate items (e.g., array of objects)
-  search_params Json     // New field to store search parameters (e.g., object with query parameters)
-  total_pages   Int      // New field to store total number of pages
-  last_updated  DateTime
+model PropertyToRent {
+  id               String   @id @default(uuid())
+  title            String
+  purpose          Purpose
+  price            Float
+  rooms            Int
+  baths            Int
+  area             Float
+  rentFrequency    RentFrequency?  
+  location         String
+  description      String
+  furnishingStatus String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
+  @@map("Rentproperties") // Optional: Rename the table in the database if needed
 }
+model PropertyToBuy {
+  id               String   @id @default(uuid())
+  title            String
+  purpose          Purpose
+  price            Float
+  rooms            Int
+  baths            Int
+  area             Float
+  rentFrequency    RentFrequency?  
+  location         String
+  description      String
+  furnishingStatus String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-enum Status {
-  new
-  updated
-  default
-  removed
+  @@map("Buyproperties") // Optional: Rename the table in the database if needed
+}
+enum Purpose {
+  FOR_SALE
+  FOR_RENT
+}
+enum RentFrequency {
+  YEARLY
+  MONTHLY
+  WEEKLY
+  DAILY
 }

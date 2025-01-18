@@ -1,10 +1,13 @@
+//api route handler,api endopoint for fetching properties and property details
+////keeping it as seperation of concerns.
 import { NextResponse } from 'next/server';
-import { fetchProperties, fetchPropertyDetails } from '@/app/(dashboard)/searchBuy/realEstate';
+import { fetchProperties, fetchPropertyDetails } from '@/app/services/realEstate';
+import { PropertyPurpose } from '@/lib/types';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const purpose = searchParams.get('purpose') || 'for-rent';
+    const purpose = searchParams.get('purpose') as PropertyPurpose || 'for-sale';
     const propertyId = searchParams.get('propertyId');
     const page = Number(searchParams.get('page')) || 1;
     const hitsPerPage = Number(searchParams.get('hitsPerPage')) || 9;
