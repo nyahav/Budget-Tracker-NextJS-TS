@@ -50,7 +50,6 @@ export class PropertyHandler {
 
         // Get from DB if we have enough
         const { properties, totalCount } = await this.getPropertiesFromDB(dbPurpose, page, hitsPerPage);
-        
         return {
             hits: properties,
             nbHits: totalCount,
@@ -68,6 +67,7 @@ private async getPropertiesFromDB(
   hitsPerPage: number
 ): Promise<{ properties: DBProperty[]; totalCount: number }> {
   try {
+    // Execute both queries in parallel for better performance
     const [properties, totalCount] = await Promise.all([
       prisma.property.findMany({
         where: { purpose },
@@ -79,29 +79,9 @@ private async getPropertiesFromDB(
         where: { purpose }
       })
     ]);
-
-    // For DB properties, ensure S3 URLs are still valid
-    const propertiesWithValidUrls = await Promise.all(
-      properties.map(async (property) => {
-        if (!property.imageUrl) return property;
-
-        try {
-          // Get fresh S3 URL (in case the old one expired)
-          const freshImageUrl = await s3.getImageUrl(property.id, purpose);
-          
-          return {
-            ...property,
-            imageUrl: freshImageUrl || property.imageUrl
-          };
-        } catch (err) {
-          console.error('Error refreshing S3 URL for property:', property.id, err);
-          return property;
-        }
-      })
-    );
     
     return {
-      properties: propertiesWithValidUrls,
+      properties,
       totalCount
     };
   } catch (error) {
@@ -123,27 +103,27 @@ private async getPropertiesFromDB(
     properties: Property[],
     purpose: DBPurpose
   ): Promise<DBProperty[]> {
+    
+
     return Promise.all(
       properties.map(async (property) => {
         let imageUrl = property.coverPhoto?.url || '';
-  
+        console.log('Processing image:', imageUrl);
         if (imageUrl) {
           try {
-           const exists = await s3.checkImageExistsInS3(property.id, purpose);
-           
+            const exists = await s3.checkImageExistsInS3(property.id, purpose);
+            console.log('Image exists:', exists);
             if (!exists) {
-              console.log('Uploading new image to S3:', property.id);
+              console.log('Uploading image to S3:', imageUrl);
               await s3.uploadImageToS3(property.id, imageUrl, purpose);
             }
-            
-            // Always get the S3 URL, whether we just uploaded or it existed
-           imageUrl = await s3.getImageUrl(property.id, purpose) || '';
+            console.log('Getting image URL from S3:', imageUrl);
+            imageUrl = (await s3.getImageUrl(property.id, purpose)) || imageUrl;
           } catch (err) {
-            console.error('Error processing image for property:', property.id, err);
-            imageUrl = ''; // Reset to empty string if processing failed
+            console.error('Error processing image:', property.id, err);
           }
         }
-  
+
         return this.convertToDBProperty(property, purpose, imageUrl);
       })
     );
@@ -166,7 +146,6 @@ private async getPropertiesFromDB(
       location: property.location?.[0]?.name || 'Unknown',
       description: property.description || '',
       furnishingStatus: property.furnishingStatus || null,
-      imageUrl: imageUrl || null,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -201,10 +180,11 @@ private async getPropertiesFromDB(
       const validatedProperty = CreatePropertySchema.parse({
         ...property,
         purpose: property.purpose.toUpperCase(),
-        createdAt: property.createdAt.toString(),
-        updatedAt: property.updatedAt.toString()
+        createdAt: property.createdAt.toISOString(),
+        updatedAt: property.updatedAt.toISOString()
       });
 
+      console.log('Property validation successful:', validatedProperty);
       return true;
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -220,7 +200,7 @@ private async getPropertiesFromDB(
   ): Promise<PropertyResponse> {
     try {
       const propertyResponse = await realEstate.fetchProperties(purpose, page, hitsPerPage);
-     
+      console.log('API Response:', propertyResponse); // Add this to check the structure
       return {
         hits: propertyResponse.hits || [],
         totalCount: propertyResponse.nbPages

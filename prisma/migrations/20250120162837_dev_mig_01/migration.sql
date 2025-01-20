@@ -83,7 +83,8 @@ CREATE TABLE "Properties" (
     "description" TEXT NOT NULL,
     "furnishingStatus" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "updatedAt" DATETIME NOT NULL,
+    "imageUrl" TEXT
 );
 
 -- CreateIndex

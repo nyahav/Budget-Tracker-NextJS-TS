@@ -24,6 +24,13 @@ const nextConfig: NextConfig = {
       'bayut-production.s3.eu-central-1.amazonaws.com',
       'realestate-tracker-nextjs.s3.eu-central-1.amazonaws.com'
     ],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'realestate-tracker-nextjs.s3.eu-central-1.amazonaws.com',
+        pathname: '/**',
+      },
+    ],
   },
 };
 

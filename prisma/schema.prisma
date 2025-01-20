@@ -102,7 +102,7 @@ model Property {
   furnishingStatus String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
-
+  imageUrl         String?
   @@map("Properties") // Optional: Rename the table in the database if needed
 }
 enum Purpose {

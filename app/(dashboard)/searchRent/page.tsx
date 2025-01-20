@@ -2,153 +2,212 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Pagination, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Property,DBPurpose,ApiPurpose, DBProperty } from '@/lib/propertyType';
-import { propertyHandler } from '@/app/services/propertyHandler';
-
+import { DBProperty, dbToApiProperty, Property } from '@/lib/propertyType';
 import placeholderImage from '@/public/placeholder.jpg';
 
+
 export default function SearchPage() {
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [page, setPage] = useState(1);
+  const [properties, setProperties] = useState<Partial<Property>[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [totalPages, setTotalPages] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
-
+  const [selectedProperty, setSelectedProperty] = useState<Partial<Property> | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [initialTotalPages, setInitialTotalPages] = useState(0);
+  const [noMoreProperties, setNoMoreProperties] = useState(false);
   const purpose = 'for-rent';
-  
-  const loadProperties = async () => {
+  const HITS_PER_PAGE = 9;
+
+  const loadProperties = async (pageNumber: number) => {
     try {
       setLoading(true);
+      setError(null); 
+      console.log('Loading properties for page:', pageNumber);
       const response = await fetch(
-        `/api/properties?purpose=${purpose}&page=${page}&hitsPerPage=9`
+        `/api/properties?purpose=${purpose}&page=${pageNumber}&hitsPerPage=${HITS_PER_PAGE}`
+      );
+
+      const data = await response.json();
+      if (!data.hits || data.hits.length === 0) {
+        setNoMoreProperties(true);
+        return;
+      }
+      // Convert the database properties to API format
+      const convertedProperties = data.hits.map((dbProperty: DBProperty) => 
+        dbToApiProperty(dbProperty)
       );
       
-      if (!response.ok) throw new Error('Failed to fetch properties');
+      setProperties(convertedProperties);
+      setNoMoreProperties(false);
+      console.log('Properties:', convertedProperties);
       
-      const data = await response.json();
-      console.log('API Response:', {
-        hits: data.hits.length,
-        nbHits: data.nbHits,
-        totalPages: data.totalPages,
-        currentPage: data.currentPage
-      });
-      
-      setProperties(data.hits);
-      setTotalPages(data.totalPages);
-      
+      // if (currentPage === 1) {
+      //   setInitialTotalPages(Math.ceil(data.total / HITS_PER_PAGE));
+      // }
     } catch (err) {
-      console.error('Error loading properties:', err);
-      setError((err as Error).message);
+      console.error('Error:', err);
+      // Check if the error is due to no more properties
+      if ((err as Error).message.includes('no properties found')) {
+        setNoMoreProperties(true);
+      } else {
+        setError((err as Error).message);
+      }
     } finally {
       setLoading(false);
     }
   };
-  
+
+
   useEffect(() => {
-    loadProperties();
-  }, [page, purpose]);
+    loadProperties(currentPage);
+  }, [currentPage]);
 
 
   const handlePageChange = (newPage: number) => {
     console.log('Changing to page:', newPage);
-    setPage(newPage);
+    console.log('Total Pages:', totalPages);
+    if (newPage < 1 ) {
+        console.log ('Invalid page number:', newPage);
+        return;
+    }
+    setCurrentPage(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleItemClick = (property: Property) => {
+  const handleItemClick = (property: Partial<Property>) => {
     setSelectedProperty(property);
     setIsDialogOpen(true);
   };
 
-  if (loading) return <div className="text-center p-8">Loading...</div>;
-  if (error) return <div className="text-center p-8 text-red-500">{error}</div>;
-
-  
-    return (
-        <div className="container mx-auto px-4 py-8">
-            {/* Property Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {properties.map((property) => (
-                    <div
-                        key={property.id}
-                        className="border rounded-lg overflow-hidden shadow-lg"
-                        onClick={() => handleItemClick(property)}
-                    >
-                        <div className="relative h-48 w-full">
-                            <Image
-                                src={ placeholderImage.src}
-                                alt={property.title}
-                                fill
-                                className="object-cover"
-                                onError={(e) => {
-                                    console.error('Image load error:', e);
-                                    e.currentTarget.src = placeholderImage.src;
-                                }}
-                            />
-                        </div>
-                        <div className="p-4">
-                            <h3 className="font-bold text-lg mb-2">{property.title}</h3>
-                            <p className="text-gray-700 mb-2">
-                                Price: AED {property.price.toLocaleString()}
-                            </p>
-                            <div className="flex justify-between text-sm text-gray-600">
-                                <span>{property.rooms} Rooms</span>
-                                <span>{property.baths} Baths</span>
-                                <span>{property.area.toFixed(0)} sqft</span>
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {/* Dialog for Property Details */}
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-lg">
-                    <DialogHeader>
-                        <DialogTitle>{selectedProperty?.title}</DialogTitle>
-                        <DialogDescription>
-                            Detailed information about the property.
-                        </DialogDescription>
-                    </DialogHeader>
-                    {selectedProperty && (
-                        <div className="space-y-4">
-                            <div className="relative h-64 w-full">
-                                <Image
-                                    //src={selectedProperty.coverPhoto?.url || "/placeholder.jpg"}
-                                    src={ placeholderImage.src}
-                                    alt={selectedProperty.title}
-                                    fill
-                                    className="object-cover rounded-lg"
-                                />
-                            </div>
-                            <p className="text-green-800">Price: AED {selectedProperty.price.toLocaleString()}</p>
-                            <p className="text-white-700 justify-between w-full">
-                                {selectedProperty.rooms} Rooms, {selectedProperty.baths} Baths, Area: {selectedProperty.area.toFixed(0)} sqft
-                            </p>
-                        </div>
-                    )}
-                </DialogContent>
-            </Dialog>
-
-            <div className="mt-8 flex justify-center">
-                <Pagination className="space-x-2">
-                    {page > 1 && (
-                        <PaginationPrevious
-                            onClick={() => handlePageChange(page - 1)}
-                            aria-label="Previous Page"
-                        />
-                    )}
-                    {page < totalPages && (
-                        <PaginationNext
-                            onClick={() => handlePageChange(page + 1)}
-                            aria-label="Next Page"
-                        />
-                    )}
-                </Pagination>
-            </div>
+  return (
+    <div className="container mx-auto px-4 py-8">
+      {loading ? (
+        <div className="text-center p-8">
+          <div className="animate-spin h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto"></div>
+          <p className="mt-4">Loading properties...</p>
         </div>
-    );
+      ) : error ? (
+        <div className="text-center p-8 text-red-500">{error}</div>
+      ) : (
+        <>
+          {/* Property Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {properties.map((property) => (
+                
+              <div
+                key={property.id}
+                className="border rounded-lg overflow-hidden shadow-lg cursor-pointer transform transition-transform duration-200 hover:scale-105"
+                onClick={() => handleItemClick(property)}
+              >
+                <div className="relative h-48 w-full">
+                  <Image
+                    src={property.coverPhoto?.url || placeholderImage.src}
+                    alt={property.title ?? ''}
+                    unoptimized
+                    fill
+                    className="object-cover"
+                    onError={(e) => {
+                      console.log('Image load error:', e);
+                      e.currentTarget.src = placeholderImage.src;
+                    }}
+                  />
+                </div>
+                <div className="p-4">
+                  <h3 className="font-bold text-lg mb-2 line-clamp-2">{property.title}</h3>
+                  <p className="text-green-700 font-semibold mb-2">
+                    AED {(property.price ?? 0).toLocaleString()}
+                  </p>
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>{property.rooms} Rooms</span>
+                    <span>{property.baths} Baths</span>
+                    <span>{((property.area ?? 0).toFixed(0))} sqft</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+              </div>
+
+              {/* Always show pagination if there are properties */}
+              <div className="mt-8 flex justify-center space-x-4">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1 || loading}
+                  className={`px-4 py-2 rounded ${currentPage === 1 || loading
+                      ? 'bg-gray-300 cursor-not-allowed'
+                      : 'bg-blue-500 hover:bg-blue-600 text-white'
+                    }`}
+                >
+                  Previous
+                </button>
+
+                <span className="px-4 py-2">Page {currentPage}</span>
+
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={noMoreProperties || loading}
+                  className={`px-4 py-2 rounded ${noMoreProperties || loading
+                      ? 'bg-gray-300 cursor-not-allowed'
+                      : 'bg-blue-500 hover:bg-blue-600 text-white'
+                    }`}
+                >
+                  Next
+                </button>
+              </div>
+
+              {/* No More Properties Message */}
+              {noMoreProperties && (
+                <div className="text-center mt-8 p-4 bg-gray-100 rounded">
+                  <p className="text-gray-600">No more properties to display</p>
+                </div>
+              )}
+          {/* Property Details Dialog */}
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent className="max-w-lg">
+                  <DialogHeader>
+                <DialogTitle className="text-xl font-bold">{selectedProperty?.title}</DialogTitle>
+                <DialogDescription>
+                  Property Details
+                </DialogDescription>
+              </DialogHeader>
+              {selectedProperty && (
+                <div className="space-y-4">
+                  <div className="relative h-64 w-full">
+                    <Image
+                      src={selectedProperty.coverPhoto?.url ||placeholderImage.src}
+                      alt={selectedProperty.title ?? ''}
+                      unoptimized
+                      fill
+                      className="object-cover rounded-lg"
+                      onError={(e) => {
+                        console.log('Image load error:', e);
+                        e.currentTarget.src = placeholderImage.src;
+                      }}
+                    />
+                  </div>
+                  <p className="text-green-700 font-semibold text-lg">
+                    AED {(selectedProperty.price ?? 0).toLocaleString()}
+                  </p>
+                  <div className="grid grid-cols-3 gap-4 text-gray-600">
+                    <div>
+                      <span className="font-semibold">Rooms:</span> {selectedProperty.rooms}
+                    </div>
+                    <div>
+                      <span className="font-semibold">Baths:</span> {selectedProperty.baths}
+                    </div>
+                    <div>
+                      <span className="font-semibold">Area:</span> {(selectedProperty.area ?? 0).toFixed(0)} sqft
+                    </div>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
+        </>
+      )}
+    </div>
+  );
 }

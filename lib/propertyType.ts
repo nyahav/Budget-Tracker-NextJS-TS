@@ -81,6 +81,7 @@ export interface DBProperty {
   furnishingStatus: string | null;
   createdAt: Date;
   updatedAt: Date;
+  imageUrl: string | null;
 }
 
 // Type Conversion Functions
@@ -98,6 +99,7 @@ export const apiToDbProperty = (prop: Property): DBProperty => ({
   furnishingStatus: prop.furnishingStatus || null,
   createdAt: new Date(),
   updatedAt: new Date(),
+  imageUrl: prop.coverPhoto?.url || null, 
 });
 
 export const dbToApiProperty = (dbProp: DBProperty): Partial<Property> => ({
@@ -112,6 +114,7 @@ export const dbToApiProperty = (dbProp: DBProperty): Partial<Property> => ({
   description: dbProp.description,
   furnishingStatus: dbProp.furnishingStatus || undefined,
   rentFrequency: dbProp.rentFrequency?.toLowerCase() as Property['rentFrequency'],
-  createdAt: dbProp.createdAt.toISOString(),
-  updatedAt: dbProp.updatedAt.toISOString(),
+  createdAt: dbProp.createdAt.toString(),
+  updatedAt: dbProp.updatedAt.toString(),
+  coverPhoto: dbProp.imageUrl ? { url: dbProp.imageUrl, id: 0 } : undefined,
 });

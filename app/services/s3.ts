@@ -32,6 +32,7 @@ class S3Service {
       console.error('Error uploading to S3:', error);
       return false;
     }
+   
   }
 
   /**
@@ -54,6 +55,7 @@ class S3Service {
       console.error('Error fetching from S3:', error);
       throw error;
     }
+    
   }
 
   /**
@@ -79,10 +81,10 @@ class S3Service {
    */
   async uploadImageToS3(propertyId: string, imageUrl: string, purpose: PropertyKind): Promise<boolean> {
     try {
-      console.log('Starting image upload to S3:', { propertyId, purpose });
+      //console.log('Starting image upload to S3:', { propertyId, purpose });
       
       // Fetch image from URL
-      console.log('Fetching image from:', imageUrl);
+      //console.log('Fetching image from:', imageUrl);
       const imageResponse = await fetch(imageUrl);
       
       if (!imageResponse.ok) {
@@ -96,10 +98,10 @@ class S3Service {
       const folder = purpose === 'buy' ? 'buy' : 'rent';
       const key = `${folder}/${propertyId}.jpg`;
       
-      console.log('Uploading to S3:', {
-        bucket: process.env.S3_BUCKET,
-        key: key
-      });
+      // console.log('Uploading to S3:', {
+      //   bucket: process.env.S3_BUCKET,
+      //   key: key
+      // });
 
       const command = new PutObjectCommand({
         Bucket: process.env.S3_BUCKET,
@@ -109,7 +111,7 @@ class S3Service {
       });
 
       const result = await this.client.send(command);
-      console.log('Upload complete:', result);
+      //console.log('Upload complete:', result);
       return true;
 
     } catch (error) {
@@ -121,15 +123,16 @@ class S3Service {
     try {
       const command = new GetObjectCommand({
         Bucket: this.bucketName,
-        Key: `properties/${purpose}/${propertyId}.jpg`,
+        Key: `${purpose}/${propertyId}.jpg`,
       });
 
       const url = await getSignedUrl(this.client, command, { expiresIn: 3600 });
       return url;
     } catch (error) {
       console.error('Error getting S3 image URL:', error);
-      return '';
+      return '/placeholder.jpg';
     }
+    
   }
 }
 

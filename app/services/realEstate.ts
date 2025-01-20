@@ -4,11 +4,11 @@
 
 
 import { z } from 'zod';
-import { Property,DBPurpose, ApiPurpose, APIProperty } from '@/lib/propertyType';
+import { DBPurpose, ApiPurpose, Property } from '@/lib/propertyType';
 
 // Types for API response
 export interface PropertyResponse {
-  hits: APIProperty[];
+  hits: Property[];
   nbHits: number;
   page: number;
   nbPages: number;
@@ -57,7 +57,7 @@ export class RealEstateService {
         throw new Error(`API error: ${response.status}`);
       }
 
-      console.log('API response:', response.status);
+      console.log('API response status:', response.status);
       const data = await response.json();
       
       console.log('API response:', {

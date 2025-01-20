@@ -18,6 +18,7 @@ export const CreatePropertySchema = z.object({
   furnishingStatus: z.string().nullable(), // Optional furnishing status
   createdAt: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid date" }), // Validate date format
   updatedAt: z.string().refine((val) => !isNaN(Date.parse(val)), { message: "Invalid date" }), // Validate date format
+  imageUrl: z.string().nullable(), // Optional image URL
 });
 
 export type CreatePropertySchemaType = z.infer<typeof CreatePropertySchema>;
