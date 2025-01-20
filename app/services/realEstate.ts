@@ -4,80 +4,95 @@
 
 
 import { z } from 'zod';
-import {Property } from '../../lib/propertyType';
-
-
-// Validate environment variables
-if (!process.env.RAPID_API_KEY || !process.env.RAPID_API_HOST) {
-  throw new Error('Missing RAPID_API environment variables');
-}
-
-const RAPID_API_KEY = process.env.RAPID_API_KEY;
-const RAPID_API_HOST = process.env.RAPID_API_HOST;
+import { Property,DBPurpose, ApiPurpose, APIProperty } from '@/lib/propertyType';
 
 // Types for API response
-interface PropertyResponse {
-  hits: Property[]; 
+export interface PropertyResponse {
+  hits: APIProperty[];
   nbHits: number;
   page: number;
   nbPages: number;
   hitsPerPage: number;
 }
-type PropertyPurpose = 'for-rent' | 'for-sale';
 
-export const fetchProperties = async (
-  purpose : PropertyPurpose, 
-  page = 1, 
-  hitsPerPage = 9
-): Promise<PropertyResponse> => {
-  console.log('Fetching properties:', { purpose, page, hitsPerPage });
-  
-  const url = `https://${RAPID_API_HOST}/properties/list?locationExternalIDs=5002&purpose=${purpose}&hitsPerPage=${hitsPerPage}&page=${page - 1}`;
-  
-  const options = {
-    method: 'GET',
-    headers: {
-      'X-RapidAPI-Key': RAPID_API_KEY,
-      'X-RapidAPI-Host': RAPID_API_HOST,
-      'Content-Type': 'application/json',
-    },
-  };
+export class RealEstateService {
+  private readonly apiKey: string;
+  private readonly apiHost: string;
 
-  try {
-    const response = await fetch(url, options);
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+  constructor() {
+    // Validate environment variables
+    if (!process.env.RAPID_API_KEY || !process.env.RAPID_API_HOST) {
+      throw new Error('Missing RAPID_API environment variables');
     }
-    const data = await response.json();
-    console.log('API response:', { 
-      total: data.nbHits,
-      currentPage: data.page 
-    });
-    return data;
-  } catch (error) {
-    console.error('Error fetching properties:', error);
-    throw error;
+
+    this.apiKey = process.env.RAPID_API_KEY;
+    this.apiHost = process.env.RAPID_API_HOST;
   }
-};
 
-export const fetchPropertyDetails = async (externalID: string) => {
-  const url = `https://${RAPID_API_HOST}/properties/detail?externalID=${externalID}`;
+  private getRequestOptions(): RequestInit {
+    return {
+      method: 'GET',
+      headers: {
+        'X-RapidAPI-Key': this.apiKey,
+        'X-RapidAPI-Host': this.apiHost,
+        'Content-Type': 'application/json',
+      },
+    };
+  }
+  async fetchProperties(
+    purpose: ApiPurpose,
+    page = 1,
+    hitsPerPage = 9
+  ): Promise<PropertyResponse> {
+    console.log('Fetching properties:', { purpose, page, hitsPerPage });
+    //need to convert cause of api rules
+    //purpose === 'for-rent' ? 'for-rent' : 'for-sale';
+    const url = `https://${this.apiHost}/properties/list?locationExternalIDs=5002&purpose=${purpose}&hitsPerPage=${hitsPerPage}&page=${page - 1}`;
+    console.log('Requesting URL:', url);
 
-  const options = {
-    method: 'GET',
-    headers: {
-      'X-RapidAPI-Key': RAPID_API_KEY,
-      'X-RapidAPI-Host': RAPID_API_HOST,
-      'Content-Type': 'application/json',
+    try {
+      const response = await fetch(url, this.getRequestOptions());
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      console.log('API response:', response.status);
+      const data = await response.json();
+      
+      console.log('API response:', {
+        total: data.nbHits,
+        currentPage: data.page
+      });
+
+      return data;
+    } catch (error) {
+      console.error('Error fetching properties:', error);
+      throw error;
     }
-  };
-
-  try {
-    const response = await fetch(url, options);
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error fetching property details:', error);
-    throw error;
   }
-};
+
+  async fetchPropertyDetails(externalID: string): Promise<any> {
+    const url = `https://${this.apiHost}/properties/detail?externalID=${externalID}`;
+
+    try {
+      const response = await fetch(url, this.getRequestOptions());
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching property details:', error);
+      throw error;
+    }
+  }
+}
+
+// Create and export singleton instance
+export const realEstate = new RealEstateService();
+
+// Export class for cases where a new instance is needed
+export default RealEstateService;

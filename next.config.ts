@@ -7,7 +7,18 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true, // Ignores TypeScript errors during build
   },
-
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        dns: false,
+        net: false,
+        fs: false,
+        tls: false,
+      };
+    }
+    return config;
+  },
   images: {
     domains: [
       'bayut-production.s3.eu-central-1.amazonaws.com',

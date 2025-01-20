@@ -1,49 +1,220 @@
-// lib/redis.ts
 import { Redis } from 'ioredis';
-import { PrismaClient } from '@prisma/client';
+import {DBPurpose} from '@/lib/propertyType';
+ //page in redis cache 
+// [
+//   { "serialNumber": 1, "id": "property_123" },
+//   { "serialNumber": 2, "id": "property_456" },
+//   { "serialNumber": 3, "id": "property_789" },
+//   // ... עד 9 פריטים בכל עמוד
+// ]
 
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
-const prisma = new PrismaClient();
+export interface CachedProperty {
+  serialNumber: number;
+  id: string;
+}
+interface Property {
+  id: string;
+}
 
-type PropertyType = 'rent' | 'buy';
+interface PaginatedProperty {
+  serialNumber: number;
+  id: string;
+}
 
-// Cache key generators
-export const getCacheKeys = {
-    // For single property
-    property: (id: string, purpose: 'rent' | 'buy') => 
-      `property:${purpose}:${id}`,
-    
-    // For page results
-    propertyPage: (page: number, hitsPerPage: number, purpose: 'rent' | 'buy') => 
-      `properties:${purpose}:page:${page}:${hitsPerPage}`,
-      
-    // For property images
-    propertyImage: (propertyId: string, purpose: 'rent' | 'buy') => 
-      `property:${purpose}:${propertyId}:image`
-  };
+export type FetchFromDBFunction = (
+  purpose: DBPurpose,
+  startIndex: number,
+  limit: number
+) => Promise<Property[]>;
 
+export class RedisPaginationService {
+  static setInCache(purpose: string, page: number, formattedProperties: { serialNumber: number; id: string; }[]) {
+    throw new Error('Method not implemented.');
+  }
+  private redis: Redis;
+  private readonly ITEMS_PER_PAGE: number;
+  private readonly CACHE_TTL: number;
+  private isConnected: boolean = false;
+  static getFromCache: any;
 
-  export async function getFromCache<T>(key: string): Promise<T | null> {
+  constructor(redisUrl: string = process.env.REDIS_URL || 'redis://localhost:6379') {
+    this.redis = new Redis(redisUrl);
+    this.ITEMS_PER_PAGE = 9;
+    this.CACHE_TTL = 3600; // 1 hour in seconds
+    this.setupConnectionMonitoring();
+  }
+  private setupConnectionMonitoring() {
+    this.redis.on('connect', () => {
+      console.log('Redis: Connection established');
+      this.isConnected = true;
+    });
+
+    this.redis.on('ready', () => {
+      console.log('Redis: Ready to accept commands');
+    });
+
+    this.redis.on('error', (err) => {
+      console.error('Redis: Connection error', err);
+      this.isConnected = false;
+    });
+
+    this.redis.on('close', () => {
+      console.log('Redis: Connection closed');
+      this.isConnected = false;
+    });
+  }
+  async checkConnection(): Promise<boolean> {
     try {
-      const cached = await redis.get(key);
-      if (cached) {
-        return JSON.parse(cached) as T;
+      const pong = await this.redis.ping();
+      console.log('Redis health check:', pong === 'PONG' ? 'OK' : 'Failed');
+      return pong === 'PONG';
+    } catch (error) {
+      console.error('Redis health check failed:', error);
+      return false;
+    }
+  }
+  /**
+   * Generates cache key based on purpose and page number
+   */
+  private generateCacheKey(purpose: DBPurpose, page: number): string {
+    return `properties:${purpose}:page:${page}`;
+  }
+
+  /**
+   * Get paginated items from cache
+   */
+  async getFromCache(purpose: DBPurpose, page: number): Promise<PaginatedProperty[] | null> {
+    if (!this.isConnected) {
+      console.log('Redis: Not connected, attempting health check...');
+      const healthy = await this.checkConnection();
+      if (!healthy) {
+        console.error('Redis: Connection unhealthy');
+        return null;
       }
-      return null;
-    } catch (error) {
-      console.error('Redis cache error:', error);
-      return null;
     }
-  }
-
-  export async function setInCache<T>(key: string, data: T, ttl: number = 3600): Promise<void> {
+    
     try {
-      await redis.setex(key, ttl, JSON.stringify(data));
+      const cacheKey = this.generateCacheKey(purpose, page);
+      const cachedData = await this.redis.get(cacheKey);
+      
+      if (!cachedData) {
+        return null;
+      }
+
+      return JSON.parse(cachedData) as PaginatedProperty[];
     } catch (error) {
-      console.error('Redis cache set error:', error);
+      console.error('Error getting data from cache:', error);
+      return null;
     }
   }
 
-  export async function invalidateCache(key: string): Promise<void> {
-    await redis.del(key);
+  /**
+   * Set paginated items in cache
+   */
+  async setInCache(
+    purpose: DBPurpose,
+    page: number,
+    items: PaginatedProperty[]
+  ): Promise<boolean> {
+    if (!this.isConnected) {
+      console.log('Redis: Not connected, attempting health check...');
+      const healthy = await this.checkConnection();
+      if (!healthy) {
+        console.error('Redis: Connection unhealthy');
+        return false;
+      }
+    }
+    try {
+      const cacheKey = this.generateCacheKey(purpose, page);
+      await this.redis.setex(
+        cacheKey,
+        this.CACHE_TTL,
+        JSON.stringify(items)
+      );
+      return true;
+    } catch (error) {
+      console.error('Error setting data in cache:', error);
+      return false;
+    }
   }
+
+  /**
+   * Invalidate cache for specific purpose and page
+   */
+  async invalidateCache(purpose: DBPurpose, page: number | null = null): Promise<boolean> {
+    if (!this.isConnected) {
+      console.log('Redis: Not connected, attempting health check...');
+      const healthy = await this.checkConnection();
+      if (!healthy) {
+        console.error('Redis: Connection unhealthy');
+        return false;
+      }
+    }
+    try {
+      if (page !== null) {
+        // Invalidate specific page
+        const cacheKey = this.generateCacheKey(purpose, page);
+        await this.redis.del(cacheKey);
+      } else {
+        // Invalidate all pages for this purpose
+        const pattern = `properties:${purpose}:page:*`;
+        const keys = await this.redis.keys(pattern);
+        if (keys.length > 0) {
+          await this.redis.del(keys);
+        }
+      }
+      return true;
+    } catch (error) {
+      console.error('Error invalidating cache:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get paginated property IDs
+   */
+  async getPaginatedProperties(
+    purpose: DBPurpose,
+    page: number,
+    fetchFromDB: FetchFromDBFunction
+  ): Promise<PaginatedProperty[]> {
+    try {
+      // Try to get from cache first
+      const cachedData = await this.getFromCache(purpose, page);
+      if (cachedData) {
+        return cachedData;
+      }
+
+      // If not in cache, fetch from DB
+      const startIndex = (page - 1) * this.ITEMS_PER_PAGE;
+      const items = await fetchFromDB(purpose, startIndex, this.ITEMS_PER_PAGE);
+      
+      // Format the response
+      const formattedItems = items.map((item, index) => ({
+        serialNumber: startIndex + index + 1,
+        id: item.id
+      }));
+
+      // Cache the results
+      await this.setInCache(purpose, page, formattedItems);
+
+      return formattedItems;
+    } catch (error) {
+      console.error('Error getting paginated properties:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Close Redis connection
+   */
+  async close(): Promise<void> {
+    await this.redis.quit();
+  }
+}
+
+// Create and export singleton instance
+export const redis = new RedisPaginationService();
+
+// Export class for cases where a new instance is needed
+export default RedisPaginationService;

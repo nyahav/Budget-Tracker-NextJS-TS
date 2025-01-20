@@ -88,10 +88,10 @@ model YearHistory{
 }
 
 
-model PropertyToRent {
+model Property {
   id               String   @id @default(uuid())
-  title            String
   purpose          Purpose
+  title            String
   price            Float
   rooms            Int
   baths            Int
@@ -103,28 +103,11 @@ model PropertyToRent {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  @@map("Rentproperties") // Optional: Rename the table in the database if needed
-}
-model PropertyToBuy {
-  id               String   @id @default(uuid())
-  title            String
-  purpose          Purpose
-  price            Float
-  rooms            Int
-  baths            Int
-  area             Float
-  rentFrequency    RentFrequency?  
-  location         String
-  description      String
-  furnishingStatus String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  @@map("Buyproperties") // Optional: Rename the table in the database if needed
+  @@map("Properties") // Optional: Rename the table in the database if needed
 }
 enum Purpose {
-  FOR_SALE
-  FOR_RENT
+  buy
+  rent
 }
 enum RentFrequency {
   YEARLY

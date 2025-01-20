@@ -26,6 +26,3 @@ export interface Property {
   
   export {};
 
-  export type PropertyPurpose = 'for-rent' | 'for-sale';
-
-  export type PropertyKind = 'buy' | 'rent';
