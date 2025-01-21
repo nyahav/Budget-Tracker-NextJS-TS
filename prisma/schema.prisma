@@ -86,3 +86,32 @@ model YearHistory{
 
   @@id([month,year,userId])
 }
+
+
+model Property {
+  id               String   @id @default(uuid())
+  purpose          Purpose
+  title            String
+  price            Float
+  rooms            Int
+  baths            Int
+  area             Float
+  rentFrequency    RentFrequency?  
+  location         String
+  description      String
+  furnishingStatus String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  imageUrl         String?
+  @@map("Properties") // Optional: Rename the table in the database if needed
+}
+enum Purpose {
+  buy
+  rent
+}
+enum RentFrequency {
+  YEARLY
+  MONTHLY
+  WEEKLY
+  DAILY
+}

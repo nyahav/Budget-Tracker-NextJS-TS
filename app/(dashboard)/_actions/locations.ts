@@ -71,3 +71,7 @@ export async function CreateLocation(form:CreateLocationSchemaType){
 
     return newLocation;
 }
+
+
+
+

@@ -5,7 +5,6 @@ import { TransactionType } from '@/lib/types';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import React from 'react'
 import { toast } from 'sonner';
-import { DeleteCategory } from '../../_actions/categories';
 import { DeleteLocation } from '../_actions/deleteLocation';
 
 interface Props {
