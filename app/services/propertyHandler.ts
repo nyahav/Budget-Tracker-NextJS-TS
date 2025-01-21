@@ -3,6 +3,7 @@ import { CreatePropertySchema } from '@/schema/properties';
 import { z } from 'zod';
 import { s3 } from './s3';
 import { realEstate } from './realEstate';
+import {RedisPaginationService } from './redis'
 import {
   Property,
   ApiPurpose,
@@ -19,6 +20,10 @@ export interface PropertyResponse {
 }
 export class PropertyHandler {
   private readonly ITEMS_PER_PAGE = 9; // 3*3 grid
+  private redis: RedisPaginationService;
+  constructor() {
+    this.redis = new RedisPaginationService();
+  }
 
   public async getProperties(
     purpose: ApiPurpose,
@@ -26,7 +31,23 @@ export class PropertyHandler {
     hitsPerPage: number = this.ITEMS_PER_PAGE
 ): Promise<{ hits: DBProperty[]; nbHits: number;  total: number }> {
     try {
+        console.log(`[PropertyHandler] Getting properties for purpose: ${purpose}, page: ${page}`);
         const dbPurpose = PurposeConverter.apiToDb(purpose);
+        // Try to get from Redis cache first
+        console.log('[PropertyHandler] Checking Redis cache...');
+        const cachedData = await this.redis.getFromCache(dbPurpose, page);
+        if (cachedData) {
+            console.log('[PropertyHandler] Cache hit! Fetching properties from cache...');
+            const properties = await this.getPropertiesFromIds(cachedData);
+            const totalCount = await this.getTotalPropertiesCount(dbPurpose);
+            
+            return {
+              hits: properties,
+              nbHits: totalCount,
+              total: totalCount
+            };
+          }
+        console.log('[PropertyHandler] Cache miss. Proceeding with DB/API fetch...');
         const totalInDb = await this.getTotalPropertiesCount(dbPurpose);
         const requestedStartIndex = (page - 1) * hitsPerPage;
 
@@ -41,6 +62,8 @@ export class PropertyHandler {
             );
             
             const storedProperties = await this.storePropertiesInDB(processedProperties);
+            console.log('[PropertyHandler] Caching new properties in Redis...');
+            await this.cachePropertyIds(dbPurpose, page, storedProperties);
             return {
                 hits: storedProperties,
                 nbHits: apiResponse.totalCount,
@@ -48,9 +71,10 @@ export class PropertyHandler {
             };
         }
 
-        // Get from DB if we have enough
+        console.log('[PropertyHandler] Fetching properties from DB...');
         const { properties, totalCount } = await this.getPropertiesFromDB(dbPurpose, page, hitsPerPage);
-        
+        console.log('[PropertyHandler] Caching DB properties in Redis...');
+        await this.cachePropertyIds(dbPurpose, page, properties);
         return {
             hits: properties,
             nbHits: totalCount,
@@ -61,7 +85,64 @@ export class PropertyHandler {
         throw error;
     }
 }
+private async cachePropertyIds(purpose: DBPurpose, page: number, properties: DBProperty[]) {
+    try {
+      const formattedProperties = properties.map((prop, index) => ({
+        serialNumber: ((page - 1) * this.ITEMS_PER_PAGE) + index + 1,
+        id: prop.id
+      }));
 
+      console.log(`[PropertyHandler] Caching ${formattedProperties.length} properties for page ${page}`);
+      await this.redis.setInCache(purpose, page, formattedProperties);
+    } catch (error) {
+      console.error('[PropertyHandler] Error caching property IDs:', error);
+    }
+  }
+private async getPropertiesFromIds(cachedData: { serialNumber: number; id: string; }[]): Promise<DBProperty[]> {
+    try {
+        console.log(`[PropertyHandler] Fetching ${cachedData.length} properties from DB using cached IDs`);
+        const propertyIds = cachedData.map(item => item.id);
+        
+        const properties = await prisma.property.findMany({
+            where: {
+                id: {
+                    in: propertyIds
+                }
+            }
+        });
+
+        // First ensure properties are in the same order as cached IDs
+        const orderedProperties = propertyIds.map(id => 
+            properties.find(prop => prop.id === id)!
+        ).filter(Boolean);
+
+        // Then refresh S3 URLs
+        console.log('[PropertyHandler] Refreshing S3 URLs for cached properties...');
+        const propertiesWithValidUrls = await Promise.all(
+            orderedProperties.map(async (property) => {
+                if (!property.imageUrl) return property;
+
+                try {
+                    // Get fresh S3 URL (in case the old one expired)
+                    const freshImageUrl = await s3.getImageUrl(property.id, property.purpose);
+                    
+                    return {
+                        ...property,
+                        imageUrl: freshImageUrl || property.imageUrl
+                    };
+                } catch (err) {
+                    console.error('[PropertyHandler] Error refreshing S3 URL for cached property:', property.id, err);
+                    return property;
+                }
+            })
+        );
+
+        return propertiesWithValidUrls;
+    } catch (error) {
+        console.error('[PropertyHandler] Error fetching properties from IDs:', error);
+        throw error;
+    }
+}
 private async getPropertiesFromDB(
   purpose: DBPurpose,
   page: number,
@@ -79,7 +160,7 @@ private async getPropertiesFromDB(
         where: { purpose }
       })
     ]);
-
+    console.log(`[PropertyHandler] Found ${properties.length} properties in DB`);
     // For DB properties, ensure S3 URLs are still valid
     const propertiesWithValidUrls = await Promise.all(
       properties.map(async (property) => {
@@ -229,6 +310,21 @@ private async getPropertiesFromDB(
       console.error('Error fetching from API:', error);
       throw error;
     }
+  }
+  public async invalidateCache(purpose: DBPurpose, page?: number): Promise<void> {
+    try {
+      console.log(`[PropertyHandler] Invalidating cache for purpose: ${purpose}, page: ${page || 'all'}`);
+      await this.redis.invalidateCache(purpose, page || null);
+    } catch (error) {
+      console.error('[PropertyHandler] Error invalidating cache:', error);
+    }
+  }
+  public async close(): Promise<void> {
+    console.log('[PropertyHandler] Closing Redis connection...');
+    await this.redis.close();
+  }
+  public async checkRedisHealth(): Promise<boolean> {
+    return this.redis.checkConnection();
   }
 }
 export default PropertyHandler;

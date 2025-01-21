@@ -1,219 +1,235 @@
-// import { redis } from './redis';
-// import { realEstate, PropertyPurpose } from './realEstate';
-// import { s3 } from './s3';
-// import { prisma } from '@/lib/prisma';
-// import { PropertyKind } from '@/lib/types';
-// import { 
-//   APIProperty, 
-//   DBProperty, 
-//   dbToApiProperty, 
-//   apiToDbProperty, 
-//   Purpose, 
-//   RentFrequency 
-// } from '@/lib/propertyType';
+import { prisma } from '@/lib/prisma';
+import { CreatePropertySchema } from '@/schema/properties';
+import { z } from 'zod';
+import { s3 } from './s3';
+import { realEstate } from './realEstate';
+import {
+  Property,
+  ApiPurpose,
+  DBProperty,
+  DBPurpose,
+  RentFrequency,
+  PropertyKind,
+  PurposeConverter
+} from '@/lib/propertyType';
 
-// export class PropertyHandler {
-//   private readonly CACHE_TTL = 3600; // 1 hour in seconds
-//   private readonly ITEMS_PER_PAGE = 9; // 3*3 grid
+export interface PropertyResponse {
+  hits: Property[];
+  totalCount: number;  
+}
+export class PropertyHandler {
+  private readonly ITEMS_PER_PAGE = 9; // 3*3 grid
 
-//   private convertPurposeFormat(purpose: PropertyPurpose): PropertyKind {
-//     const purposeMapping: Record<PropertyPurpose, PropertyKind> = {
-//       for_sale: 'buy',
-//       for_rent: 'rent',
-//     };
-//     return purposeMapping[purpose];
-//   }
+  public async getProperties(
+    purpose: ApiPurpose,
+    page: number,
+    hitsPerPage: number = this.ITEMS_PER_PAGE
+): Promise<{ hits: DBProperty[]; nbHits: number;  total: number }> {
+    try {
+        const dbPurpose = PurposeConverter.apiToDb(purpose);
+        const totalInDb = await this.getTotalPropertiesCount(dbPurpose);
+        const requestedStartIndex = (page - 1) * hitsPerPage;
 
-//   public async getProperties(
-//     purpose: PropertyPurpose,
-//     page: number,
-//     hitsPerPage: number = this.ITEMS_PER_PAGE
-//   ): Promise<{ hits: DBProperty[]; nbHits: number }> {
-//     try {
-//       // Get from cache first
-//       const cachedData = await redis.getFromCache(purpose, page);
-//       if (cachedData && Array.isArray(cachedData)) {
-//         const totalCount = await this.getTotalPropertiesCount(purpose);
-//         return {
-//           hits: cachedData as DBProperty[],
-//           nbHits: totalCount
-//         };
-//       }
+        // Check if we need to fetch more from API
+        if (requestedStartIndex >= totalInDb) {
+            console.log('Need more properties, fetching from API...');
+            const apiResponse = await this.fetchFromAPI(purpose, page, hitsPerPage);
+            
+            const processedProperties = await this.processPropertiesImages(
+                apiResponse.hits,
+                dbPurpose
+            );
+            
+            const storedProperties = await this.storePropertiesInDB(processedProperties);
+            return {
+                hits: storedProperties,
+                nbHits: apiResponse.totalCount,
+                total: apiResponse.totalCount
+            };
+        }
 
-//       // Get from DB
-//       const dbProperties = await this.getPropertiesFromDB(purpose, page, hitsPerPage);
-//       if (dbProperties.length > 0) {
-//         // Cache the database results
-//         await redis.setInCache(purpose, page, dbProperties);
+        // Get from DB if we have enough
+        const { properties, totalCount } = await this.getPropertiesFromDB(dbPurpose, page, hitsPerPage);
         
-//         const totalCount = await this.getTotalPropertiesCount(purpose);
-//         return {
-//           hits: dbProperties,
-//           nbHits: totalCount
-//         };
-//       }
+        return {
+            hits: properties,
+            nbHits: totalCount,
+            total: totalCount // Using the count from DB
+        };
+    } catch (error) {
+        console.error('Error in getProperties:', error);
+        throw error;
+    }
+}
 
-//       // Fetch from API and process
-//       const apiProperties = await this.fetchFromAPI(purpose, page, hitsPerPage);
-//       const processedProperties = await this.processPropertiesImages(apiProperties, purpose);
-//       const dbFormattedProperties = await this.storePropertiesInDB(processedProperties);
+private async getPropertiesFromDB(
+  purpose: DBPurpose,
+  page: number,
+  hitsPerPage: number
+): Promise<{ properties: DBProperty[]; totalCount: number }> {
+  try {
+    const [properties, totalCount] = await Promise.all([
+      prisma.property.findMany({
+        where: { purpose },
+        skip: (page - 1) * hitsPerPage,
+        take: hitsPerPage,
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.property.count({
+        where: { purpose }
+      })
+    ]);
 
-//       // Cache the results
-//       await redis.setInCache(purpose, page, dbFormattedProperties);
+    // For DB properties, ensure S3 URLs are still valid
+    const propertiesWithValidUrls = await Promise.all(
+      properties.map(async (property) => {
+        if (!property.imageUrl) return property;
 
-//       return {
-//         hits: dbFormattedProperties,
-//         nbHits: await this.getTotalPropertiesCount(purpose)
-//       };
-//     } catch (error) {
-//       console.error('Error in getProperties:', error);
-//       throw new Error(`Failed to fetch properties: ${error instanceof Error ? error.message : 'Unknown error'}`);
-//     }
-//   }
+        try {
+          // Get fresh S3 URL (in case the old one expired)
+          const freshImageUrl = await s3.getImageUrl(property.id, purpose);
+          
+          return {
+            ...property,
+            imageUrl: freshImageUrl || property.imageUrl
+          };
+        } catch (err) {
+          console.error('Error refreshing S3 URL for property:', property.id, err);
+          return property;
+        }
+      })
+    );
+    
+    return {
+      properties: propertiesWithValidUrls,
+      totalCount
+    };
+  } catch (error) {
+    console.error('Error fetching properties from DB:', error);
+    throw new Error(`Database query failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
 
-//   private async getPropertiesFromDB(
-//     purpose: PropertyPurpose,
-//     page: number,
-//     hitsPerPage: number,
-//     cachedIds?: string[]
-//   ): Promise<DBProperty[]> {
-//     try {
-//       if (cachedIds?.length) {
-//         const properties = await prisma.property.findMany({
-//           where: {
-//             id: {
-//               in: cachedIds
-//             }
-//           }
-//         });
+  private async getTotalPropertiesCount(purpose: DBPurpose): Promise<number> {
+    try {
+      return await prisma.property.count({ where: { purpose } });
+    } catch (error) {
+      console.error('Error counting properties:', error);
+      throw new Error(`Failed to count properties: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
 
-//         return this.sortPropertiesByIds(properties, cachedIds);
-//       }
+  private async processPropertiesImages(
+    properties: Property[],
+    purpose: DBPurpose
+  ): Promise<DBProperty[]> {
+    return Promise.all(
+      properties.map(async (property) => {
+        let imageUrl = property.coverPhoto?.url || '';
+  
+        if (imageUrl) {
+          try {
+           const exists = await s3.checkImageExistsInS3(property.id, purpose);
+           
+            if (!exists) {
+              console.log('Uploading new image to S3:', property.id);
+              await s3.uploadImageToS3(property.id, imageUrl, purpose);
+            }
+            
+            // Always get the S3 URL, whether we just uploaded or it existed
+           imageUrl = await s3.getImageUrl(property.id, purpose) || '';
+          } catch (err) {
+            console.error('Error processing image for property:', property.id, err);
+            imageUrl = ''; // Reset to empty string if processing failed
+          }
+        }
+  
+        return this.convertToDBProperty(property, purpose, imageUrl);
+      })
+    );
+  }
 
-//       const properties = await prisma.property.findMany({
-//         where: { purpose },
-//         skip: (page - 1) * hitsPerPage,
-//         take: hitsPerPage,
-//         orderBy: { createdAt: 'desc' }
-//       });
+  private convertToDBProperty(
+    property: Property,
+    purpose: DBPurpose,
+    imageUrl: string
+  ): DBProperty {
+    return {
+      id: property.id.toString(),
+      title: property.title,
+      purpose: purpose,
+      price: property.price,
+      rooms: property.rooms,
+      baths: property.baths,
+      area: property.area,
+      rentFrequency: property.rentFrequency?.toUpperCase() as RentFrequency || null,
+      location: property.location?.[0]?.name || 'Unknown',
+      description: property.description || '',
+      furnishingStatus: property.furnishingStatus || null,
+      imageUrl: imageUrl || null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+  }
 
-//       // Ensure proper type casting for each property
-//       return properties.map(prop => ({
-//         ...prop,
-//         purpose: prop.purpose as Purpose,
-//         rentFrequency: prop.rentFrequency as RentFrequency | null,
-//         createdAt: new Date(prop.createdAt),
-//         updatedAt: new Date(prop.updatedAt)
-//       }));
-//     } catch (error) {
-//       console.error('Error fetching properties from DB:', error);
-//       throw new Error(`Database query failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-//     }
-//   }
+  private async storePropertiesInDB(properties: DBProperty[]): Promise<DBProperty[]> {
+    const results: DBProperty[] = [];
 
-//   private sortPropertiesByIds(properties: DBProperty[], ids: string[]): DBProperty[] {
-//     return ids
-//       .map(id => properties.find(prop => prop.id === id))
-//       .filter((prop): prop is DBProperty => prop !== undefined)
-//       .map(prop => ({
-//         ...prop,
-//         purpose: prop.purpose as Purpose,
-//         rentFrequency: prop.rentFrequency as RentFrequency | null
-//       }));
-//   }
+    for (const property of properties) {
+      try {
+        if (!this.validateProperty(property)) {
+          console.error('Property validation failed:', property);
+          continue;
+        }
 
-//   private async getTotalPropertiesCount(purpose: PropertyPurpose): Promise<number> {
-//     try {
-//       return await prisma.property.count({ where: { purpose } });
-//     } catch (error) {
-//       console.error('Error counting properties:', error);
-//       throw new Error(`Failed to count properties: ${error instanceof Error ? error.message : 'Unknown error'}`);
-//     }
-//   }
+        const savedProperty = await prisma.property.upsert({
+          where: { id: property.id },
+          update: { ...property, updatedAt: new Date() },
+          create: { ...property, createdAt: new Date() }
+        });
 
-//   private async processPropertiesImages(
-//     properties: APIProperty[],
-//     purpose: PropertyPurpose
-//   ): Promise<DBProperty[]> {
-//     const s3Purpose = this.convertPurposeFormat(purpose);
+        results.push(savedProperty);
+      } catch (error) {
+        console.error('Error saving property:', error);
+      }
+    }
 
-//     return Promise.all(
-//       properties.map(async (property) => {
-//         let imageUrl = property.coverPhoto?.url || '';
+    return results;
+  }
+  private validateProperty(property: any): boolean {
+    try {
+      const validatedProperty = CreatePropertySchema.parse({
+        ...property,
+        purpose: property.purpose.toUpperCase(),
+        createdAt: property.createdAt.toString(),
+        updatedAt: property.updatedAt.toString()
+      });
 
-//         if (imageUrl) {
-//           try {
-//             const exists = await s3.checkImageExistsInS3(property.id, s3Purpose);
-//             if (!exists) {
-//               await s3.uploadImageToS3(property.id, imageUrl, s3Purpose);
-//             }
-//             imageUrl = (await s3.getImageUrl(property.id, s3Purpose)) || imageUrl;
-//           } catch (err) {
-//             console.error('Error processing image:', property.id, err);
-//           }
-//         }
-
-//         return this.convertToDBProperty(property, purpose, imageUrl);
-//       })
-//     );
-//   }
-
-//   private convertToDBProperty(
-//     property: APIProperty,
-//     purpose: PropertyPurpose,
-//     imageUrl: string
-//   ): DBProperty {
-//     return {
-//       id: property.id,
-//       title: property.title,
-//       purpose: purpose,
-//       price: property.price,
-//       rooms: property.rooms,
-//       baths: property.baths,
-//       area: property.area,
-//       rentFrequency: property.rentFrequency?.toUpperCase() as RentFrequency || null,
-//       location: property.location?.[0]?.name || 'Unknown',
-//       description: property.description,
-//       furnishingStatus: property.furnishingStatus || null,
-//       createdAt: new Date(),
-//       updatedAt: new Date()
-//     };
-//   }
-
-//   private async storePropertiesInDB(properties: DBProperty[]): Promise<DBProperty[]> {
-//     try {
-//       return await Promise.all(
-//         properties.map(async (property) => {
-//           return await prisma.property.upsert({
-//             where: { id: property.id },
-//             update: {
-//               ...property,
-//               updatedAt: new Date()
-//             },
-//             create: property
-//           });
-//         })
-//       );
-//     } catch (error) {
-//       console.error('Error storing properties in DB:', error);
-//       throw new Error(`Failed to store properties: ${error instanceof Error ? error.message : 'Unknown error'}`);
-//     }
-//   }
-
-//   private async fetchFromAPI(
-//     purpose: PropertyPurpose,
-//     page: number,
-//     hitsPerPage: number
-//   ): Promise<APIProperty[]> {
-//     try {
-//       // Implement your API fetching logic here
-//       return [];
-//     } catch (error) {
-//       console.error('Error fetching from API:', error);
-//       throw new Error(`API fetch failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-//     }
-//   }
-// }
-
-// export default PropertyHandler;
-// export const propertyHandler = new PropertyHandler();
+      return true;
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        console.error('Property validation failed:', error.errors);
+      }
+      return false;
+    }
+  }
+  private async fetchFromAPI(
+    purpose: ApiPurpose,
+    page: number,
+    hitsPerPage: number
+  ): Promise<PropertyResponse> {
+    try {
+      const propertyResponse = await realEstate.fetchProperties(purpose, page, hitsPerPage);
+     
+      return {
+        hits: propertyResponse.hits || [],
+        totalCount: propertyResponse.nbPages
+      };
+    } catch (error) {
+      console.error('Error fetching from API:', error);
+      throw error;
+    }
+  }
+}
+export default PropertyHandler;
+export const propertyHandler = new PropertyHandler();

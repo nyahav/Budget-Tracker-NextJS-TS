@@ -116,6 +116,7 @@ export default function SearchPage() {
                     }}
                   />
                 </div>
+                <div className="flex flex-col flex-grow justify-between">
                 <div className="p-4">
                   <h3 className="font-bold text-lg mb-2 line-clamp-2">{property.title}</h3>
                   <p className="text-green-700 font-semibold mb-2">
@@ -125,6 +126,7 @@ export default function SearchPage() {
                     <span>{property.rooms} Rooms</span>
                     <span>{property.baths} Baths</span>
                     <span>{((property.area ?? 0).toFixed(0))} sqft</span>
+                  </div>
                   </div>
                 </div>
               </div>
