@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from './ui/button';
 import { UserButton } from '@clerk/nextjs';
 import { ThemeSwitcherBtn } from './ThemeSwitcherBtn';
+import { ChatGPTButton } from './ChatGPTButton';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 import { Menu } from 'lucide-react';
 import {
@@ -31,6 +32,7 @@ const items =[
     {label: "Transactions", link: "/transactions"},
     {label: "Locations", link: "/locations"},
     {label: "Manage", link: "/manage"},
+    
     {
         label: "Search",
         submenu: [
@@ -107,6 +109,7 @@ function DesktopNavbar() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            <ChatGPTButton />
             <ThemeSwitcherBtn />
             <UserButton afterSwitchSessionUrl="/sign-in" />
           </div>
