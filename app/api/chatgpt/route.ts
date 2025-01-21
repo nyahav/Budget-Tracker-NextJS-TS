@@ -1,6 +1,6 @@
 // app/api/property-search/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { propertyAI } from '@/app/services/chatGPT';
+import { realEstateAI } from '@/app/services/chatGPT';
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const results = await propertyAI.searchProperties(query);
+    const results = await realEstateAI.search(query);
     
     return NextResponse.json(results);
   } catch (error) {

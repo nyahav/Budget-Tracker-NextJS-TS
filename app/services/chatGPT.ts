@@ -1,49 +1,81 @@
 import { PrismaClient } from '@prisma/client';
 import OpenAI from "openai";
-import { DBProperty, DBPurpose } from '@/lib/propertyType';
+import { DBProperty } from '@/lib/propertyType';
+import { z } from "zod";
 
-const VALID_PURPOSES = ['rent', 'buy'] as const;
-type PropertyPurpose = typeof VALID_PURPOSES[number];
+// Transaction Types based on the Zod schema
+export const TransactionTypeEnum = z.enum(["income", "expense"]);
+export type TransactionType = z.infer<typeof TransactionTypeEnum>;
 
-export class PropertyAIService {
-    private openai: OpenAI;
-    private prisma: PrismaClient;
- 
-    constructor() {
-      if (!process.env.OPENAI_API_KEY) {
-        throw new Error('OPENAI_API_KEY is not configured');
-      }
-      this.openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY
-      });
-      
-      // Initialize Prisma client
-      this.prisma = new PrismaClient();
+export interface DBTransaction {
+  id: string;
+  createAt: Date;
+  updateAt: Date;
+  amount: number;
+  description?: string;
+  date: Date;
+  userId: string;
+  type: TransactionType;
+  category: string;
+  categoryIcon?: string;
+}
+function isValidTransactionType(type: string): type is TransactionType {
+    return type === "income" || type === "expense";
+}
+// Add a function to transform Prisma result to our type
+function transformPrismaTransaction(transaction: any): DBTransaction {
+    if (!isValidTransactionType(transaction.type)) {
+      throw new Error(`Invalid transaction type: ${transaction.type}`);
     }
+    
+    return {
+      ...transaction,
+      type: transaction.type as TransactionType
+    };
+}
+const VALID_PROPERTY_PURPOSES = ['rent', 'buy'] as const;
+type PropertyPurpose = typeof VALID_PROPERTY_PURPOSES[number];
 
-  async searchProperties(userQuery: string): Promise<{
-    properties: DBProperty[];
-    explanation: string;
-  }> {
+type SearchResult = {
+  properties?: DBProperty[];
+  transactions?: DBTransaction[];
+  explanation: string;
+};
+
+export class RealEstateAIService {
+  private openai: OpenAI;
+  private prisma: PrismaClient;
+ 
+  constructor() {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not configured');
+    }
+    this.openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
+    this.prisma = new PrismaClient();
+  }
+  
+  async search(userQuery: string): Promise<SearchResult> {
     try {
-      console.log('[PropertyAIService] Processing query:', userQuery);
+      console.log('[RealEstateAIService] Processing query:', userQuery);
 
-      // 1. First, analyze the user query with GPT to extract search parameters
       const searchParams = await this.analyzeQuery(userQuery);
-      console.log('[PropertyAIService] Analyzed parameters:', searchParams);
+      console.log('[RealEstateAIService] Analyzed parameters:', searchParams);
       
-      // 2. Build and execute database query
-      const properties = await this.executeSearch(searchParams);
+      let result: SearchResult = { explanation: '' };
       
-      // 3. Generate explanation of results
-      const explanation = await this.explainResults(userQuery, properties, searchParams);
+      if (searchParams.table === 'properties') {
+        result.properties = await this.searchProperties(searchParams);
+        result.explanation = await this.explainPropertyResults(userQuery, result.properties, searchParams);
+      } else if (searchParams.table === 'transactions') {
+        result.transactions = await this.searchTransactions(searchParams);
+        result.explanation = await this.explainTransactionResults(userQuery, result.transactions, searchParams);
+      }
 
-      return {
-        properties,
-        explanation
-      };
+      return result;
     } catch (error) {
-      console.error('[PropertyAIService] Error in searchProperties:', error);
+      console.error('[RealEstateAIService] Error in search:', error);
       throw error;
     }
   }
@@ -55,199 +87,234 @@ export class PropertyAIService {
         messages: [
           {
             role: "system",
-            content: `You are a property search parameter extractor. Convert natural language queries into structured search parameters.
-            For property purpose:
-            - Words like "rent", "lease", "rental" → purpose: "rent"
-            - Words like "buy", "purchase", "sale" → purpose: "buy"
-            Always use lower "rent" or "buy" for the purpose field.
-            
-            For prices:
-            - "over X" or "more than X" should set minPrice only
-            - "under X" or "less than X" should set maxPrice only
-            - "between X and Y" should set both minPrice and maxPrice
-            - Handle price variations like "1 million", "1M", "500k", etc.`
+            content: `
+            You are a natural language query processor for a real estate application that handles both properties and financial transactions.
+
+            Properties Schema:
+            {
+              id: String,
+              purpose: "rent" | "buy",
+              title: String,
+              price: Float,
+              rooms: Int,
+              baths: Int,
+              area: Float,
+              rentFrequency: String?,
+              location: String,
+              description: String,
+              furnishingStatus: String?,
+              createdAt: DateTime,
+              updatedAt: DateTime,
+              imageUrl: String?
+            }
+
+            Transactions Schema:
+            {
+              id: String,
+              createdAt: DateTime,
+              updatedAt: DateTime,
+              amount: Float (positive, multiple of 0.01),
+              description: String?,
+              date: DateTime,
+              userId: String,
+              type: "income" | "expense",
+              category: String,
+              categoryIcon: String?
+            }
+
+            Property Search Scenarios:
+            1. Rental searches: "apartments for rent under $2000 in downtown"
+            2. Purchase searches: "houses for sale with 3+ bedrooms"
+            3. Location-based: "furnished properties in manhattan"
+            4. Amenity-based: "properties with 2+ bathrooms"
+            5. Price range: "homes between $300k and $500k"
+
+            Transaction Search Scenarios:
+            1. Income tracking: "show my rental income from last month"
+            2. Expense analysis: "maintenance expenses over $1000"
+            3. Date ranges: "transactions from January to March"
+            4. Category search: "all utility payments"
+            5. Type filtering: "total income this year"
+
+            Return a JSON object with:
+            {
+              "table": "properties" | "transactions",
+              // For properties:
+              "purpose"?: "rent" | "buy",
+              "minPrice"?: number,
+              "maxPrice"?: number,
+              "minRooms"?: number,
+              "maxRooms"?: number,
+              "minBaths"?: number,
+              "maxBaths"?: number,
+              "location"?: string,
+              "furnishingStatus"?: string,
+              // For transactions:
+              "type"?: "income" | "expense",
+              "minAmount"?: number,
+              "maxAmount"?: number,
+              "startDate"?: string,
+              "endDate"?: string,
+              "category"?: string
+            }`
           },
           {
             role: "user",
-            content: `Convert this query into search parameters: "${query}"
-
-Example conversions:
-"properties to rent" → {"purpose": "rent"}
-"houses for sale" → {"purpose": "buy"}
-"rental properties under 2000" → {"purpose": "rent", "maxPrice": 2000}
-
-Return ONLY a JSON object with any of these fields that are mentioned (explicitly or implicitly):
-{
-  "purpose": "buy" or "rent",
-  "minPrice": number,
-  "maxPrice": number,
-  "minRooms": number,
-  "maxRooms": number,
-  "minBaths": number,
-  "maxBaths": number,
-  "location": string,
-  "furnishingStatus": string
-}`
+            content: query
           }
         ],
         temperature: 0.1
       });
-  
-      if (!completion.choices[0]?.message?.content) {
-        console.log('[PropertyAIService] No content in OpenAI response');
-        return {};
-      }
 
-      let response = completion.choices[0].message.content.trim();
-      console.log('[PropertyAIService] Raw OpenAI response:', response);
-      
-      // Extract JSON using a more compatible regex approach
-      let jsonContent = response;
-      
-      // First try to extract from markdown code blocks if present
-      const codeBlockMatch = response.match(/```(?:json)?\s*([^]*?)\s*```/);
-      if (codeBlockMatch) {
-        jsonContent = codeBlockMatch[1].trim();
-      } else {
-        // If no code blocks, try to find JSON-like content
-        const jsonLikeMatch = response.match(/\{[^]*\}/);
-        if (jsonLikeMatch) {
-          jsonContent = jsonLikeMatch[0];
-        }
-      }
-      
-      console.log('[PropertyAIService] Extracted JSON content:', jsonContent);
-      
-      try {
-        const parsedResponse = JSON.parse(jsonContent);
-        if (typeof parsedResponse !== 'object' || parsedResponse === null) {
-          console.log('[PropertyAIService] Invalid response format, returning empty object');
-          return {};
-        }
-
-        // Validate and normalize the purpose field if present
-        if (parsedResponse.purpose) {
-          const normalizedPurpose = parsedResponse.purpose.toUpperCase();
-          if (!VALID_PURPOSES.includes(normalizedPurpose as PropertyPurpose)) {
-            console.warn(`[PropertyAIService] Invalid purpose value: ${parsedResponse.purpose}`);
-            delete parsedResponse.purpose;
-          } else {
-            parsedResponse.purpose = normalizedPurpose;
-          }
-        }
-
-        return parsedResponse;
-      } catch (parseError) {
-        console.error('[PropertyAIService] Error parsing JSON response:', parseError);
-        return {};
-      }
+      const response = completion.choices[0]?.message?.content?.trim() || '{}';
+      return JSON.parse(response);
     } catch (error) {
-      console.error('[PropertyAIService] Error analyzing query:', error);
-      return {};
+      console.error('[RealEstateAIService] Error analyzing query:', error);
+      return { table: 'properties' };
     }
   }
 
-
-  private async executeSearch(params: any): Promise<DBProperty[]> {
-    try {
-      console.log('[PropertyAIService] Executing search with params:', params);
-      
-      if (!params || typeof params !== 'object') {
-        params = {};
-      }
-
-      // Build the where clause dynamically based on params
-      const where: any = {};
-      
-      if (params.purpose) {
-        // Ensure purpose is uppercase and valid
-        const normalizedPurpose = params.purpose.toUpperCase();
-        if (VALID_PURPOSES.includes(normalizedPurpose as PropertyPurpose)) {
-          where.purpose = normalizedPurpose;
-        }
-      }
-      
-      if (params.minPrice || params.maxPrice) {
-        where.price = {};
-        if (params.minPrice) where.price.gte = Number(params.minPrice);
-        if (params.maxPrice) where.price.lte = Number(params.maxPrice);
-      }
-      
-      if (params.minRooms || params.maxRooms) {
-        where.rooms = {};
-        if (params.minRooms) where.rooms.gte = Number(params.minRooms);
-        if (params.maxRooms) where.rooms.lte = Number(params.maxRooms);
-      }
-      
-      if (params.minBaths || params.maxBaths) {
-        where.baths = {};
-        if (params.minBaths) where.baths.gte = Number(params.minBaths);
-        if (params.maxBaths) where.baths.lte = Number(params.maxBaths);
-      }
-      
-      if (params.location) {
-        where.location = {
-          contains: params.location,
-          mode: 'insensitive'
-        };
-      }
-      
-      if (params.furnishingStatus) {
-        where.furnishingStatus = params.furnishingStatus;
-      }
-
-      console.log('[PropertyAIService] Final where clause:', where);
-  
-      const properties = await this.prisma.property.findMany({
-        where,
-        take: 5, // Limit results
-        orderBy: { createdAt: 'desc' }
-      });
-  
-      console.log(`[PropertyAIService] Found ${properties.length} matching properties`);
-      return properties;
-    } catch (error) {
-      console.error('[PropertyAIService] Error executing search:', error);
-      throw error;
+  private async searchProperties(params: any): Promise<DBProperty[]> {
+    const where: any = {};
+    
+    if (params.purpose) {
+      where.purpose = params.purpose.toUpperCase();
     }
+    
+    if (params.minPrice || params.maxPrice) {
+      where.price = {};
+      if (params.minPrice) where.price.gte = Number(params.minPrice);
+      if (params.maxPrice) where.price.lte = Number(params.maxPrice);
+    }
+    
+    if (params.minRooms || params.maxRooms) {
+      where.rooms = {};
+      if (params.minRooms) where.rooms.gte = Number(params.minRooms);
+      if (params.maxRooms) where.rooms.lte = Number(params.maxRooms);
+    }
+    
+    if (params.minBaths || params.maxBaths) {
+      where.baths = {};
+      if (params.minBaths) where.baths.gte = Number(params.minBaths);
+      if (params.maxBaths) where.baths.lte = Number(params.maxBaths);
+    }
+    
+    if (params.location) {
+      where.location = {
+        contains: params.location,
+        mode: 'insensitive'
+      };
+    }
+    
+    if (params.furnishingStatus) {
+      where.furnishingStatus = params.furnishingStatus;
+    }
+
+    return await this.prisma.property.findMany({
+      where,
+      take: 10,
+      orderBy: { createdAt: 'desc' }
+    });
   }
 
-  private async explainResults(
-    originalQuery: string,
+  private async searchTransactions(params: any): Promise<DBTransaction[]> {
+    const where: any = {};
+    
+    if (params.type) {
+      // Validate the type parameter
+      if (!isValidTransactionType(params.type)) {
+        throw new Error(`Invalid transaction type in params: ${params.type}`);
+      }
+      where.type = params.type;
+    }
+    
+    if (params.minAmount || params.maxAmount) {
+      where.amount = {};
+      if (params.minAmount) where.amount.gte = Number(params.minAmount);
+      if (params.maxAmount) where.amount.lte = Number(params.maxAmount);
+    }
+    
+    if (params.startDate || params.endDate) {
+      where.date = {};
+      if (params.startDate) where.date.gte = new Date(params.startDate);
+      if (params.endDate) where.date.lte = new Date(params.endDate);
+    }
+    
+    if (params.category) {
+      where.category = {
+        contains: params.category,
+        mode: 'insensitive'
+      };
+    }
+  
+    // Get transactions from Prisma and transform them
+    const transactions = await this.prisma.transaction.findMany({
+      where,
+      take: 10,
+      orderBy: { date: 'desc' }
+    });
+  
+    // Transform and validate each transaction
+    return transactions.map(transformPrismaTransaction);
+  }
+  
+
+  private async explainPropertyResults(
+    query: string,
     properties: DBProperty[],
-    searchParams: any
+    params: any
   ): Promise<string> {
-    try {
-      const propertySummary = properties
-        .map(p => `- ${p.rooms} bedroom ${p.purpose.toLowerCase()} property in ${p.location} for ${p.price}`)
-        .join('\n');
+    const summary = properties
+      .map(p => `- ${p.rooms} bedroom ${p.purpose.toLowerCase()} property in ${p.location} for $${p.price}`)
+      .join('\n');
 
-      const completion = await this.openai.chat.completions.create({
-        model: "gpt-4",
-        messages: [
-          {
-            role: "user",
-            content: `
-              Original search query: "${originalQuery}"
-             
-              Search parameters used: ${JSON.stringify(searchParams)}
-             
-              Found ${properties.length} properties:
-              ${propertySummary}
-             
-              Please provide a brief, natural explanation of the search results and how they match the user's query.
-              Keep the explanation concise but informative.
-            `
-          }
-        ]
-      });
+    const completion = await this.openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "user",
+          content: `
+            Query: "${query}"
+            Parameters: ${JSON.stringify(params)}
+            Found ${properties.length} properties:
+            ${summary}
+            
+            Provide a natural explanation of how these results match the search criteria.
+          `
+        }
+      ]
+    });
 
-      return completion.choices[0]?.message?.content ||
-        'No explanation available for the search results.';
-    } catch (error) {
-      console.error('[PropertyAIService] Error generating explanation:', error);
-      return 'Unable to generate explanation for the search results.';
-    }
+    return completion.choices[0]?.message?.content || 'No explanation available.';
+  }
+
+  private async explainTransactionResults(
+    query: string,
+    transactions: DBTransaction[],
+    params: any
+  ): Promise<string> {
+    const summary = transactions
+      .map(t => `- ${t.type} transaction: $${t.amount} for ${t.category} on ${t.date.toLocaleDateString()}`)
+      .join('\n');
+  
+    const completion = await this.openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "user",
+          content: `
+            Query: "${query}"
+            Parameters: ${JSON.stringify(params)}
+            Found ${transactions.length} transactions:
+            ${summary}
+            
+            Provide a natural explanation of these financial results, including any relevant totals or patterns.
+          `
+        }
+      ]
+    });
+  
+    return completion.choices[0]?.message?.content || 'No explanation available.';
   }
 
   async disconnect() {
@@ -255,4 +322,4 @@ Return ONLY a JSON object with any of these fields that are mentioned (explicitl
   }
 }
 
-export const propertyAI = new PropertyAIService();
+export const realEstateAI = new RealEstateAIService();

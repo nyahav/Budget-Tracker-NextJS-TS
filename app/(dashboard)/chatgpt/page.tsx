@@ -89,22 +89,48 @@ export default function ChatGPTPage() {
             {/* Suggested Queries Section */}
             {!results && (
                 <div className="mt-4">
-                    <h3 className="text-2xl font-semibold mb-2">Suggested Queries:</h3>
-                    <div className="flex flex-row gap-2">
-                        {[
-                            "Looking to buy an apartment in the range of 500000 and 1000000",
-                            "Searching for a rental property with 3 bedrooms",
-                            "Looking for properties  under 700000",
-                            "Searching for a house with a garden and 4 bedrooms",
-                        ].map((suggestion, index) => (
-                            <button
-                                key={index}
-                                className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 text-gray-700"
-                                onClick={() => setQuery(suggestion)} // Set query when clicked
-                            >
-                                {suggestion}
-                            </button>
-                        ))}
+                    <h3 className="text-2xl font-semibold mb-4">Suggested Queries:</h3>
+
+                    {/* Property Queries Section */}
+                    <div className="mb-6">
+                        <h4 className="text-lg font-medium mb-2 text-gray-700">Property Searches:</h4>
+                        <div className="flex flex-wrap gap-2">
+                            {[
+                                "Looking to buy an apartment in the range of 500000 and 1000000",
+                                "Searching for a rental property with 3 bedrooms",
+                                "Looking for properties under 700000",
+                                "Searching for a house with a garden and 4 bedrooms",
+                            ].map((suggestion, index) => (
+                                <button
+                                    key={`property-${index}`}
+                                    className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 text-gray-700"
+                                    onClick={() => setQuery(suggestion)}
+                                >
+                                    {suggestion}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Transaction Queries Section */}
+                    <div>
+                        <h4 className="text-lg font-medium mb-2 text-gray-700">Transaction Searches:</h4>
+                        <div className="flex flex-wrap gap-2">
+                            {[
+                                "Show all income transactions from last month",
+                                "Find expenses over 1000 in utilities category",
+                                "Show my rental income for the past 3 months",
+                                "Display all maintenance expenses this year",
+                            ].map((suggestion, index) => (
+                                <button
+                                    key={`transaction-${index}`}
+                                    className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 text-gray-700"
+                                    onClick={() => setQuery(suggestion)}
+                                >
+                                    {suggestion}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
             )}
@@ -153,6 +179,6 @@ export default function ChatGPTPage() {
                     </CardContent>
                 </Card>
             ) : null}
-    </div>
-  );
+        </div>
+    );
 }
