@@ -145,39 +145,43 @@ export default function ChatGPTPage() {
                     <CardContent className="pt-6">
                         <p className="text-red-600">{error}</p>
                     </CardContent>
-                </Card>
-            ) : results ? (
-                <Card>
-                    <CardContent className="pt-6 space-y-4">
-                        <div>
-                            {/* Clear Results Button */}
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-lg font-semibold">Search Results</h3>
-                                <button
-                                    onClick={() => setResults(null)} // Clear results
-                                    className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-                                >
-                                    Clear Results
-                                </button>
-                            </div>
-                            <p className="text-gray-600 mb-4">{results.explanation}</p>
+                    </Card>
+                ) : results ? (
+                    <Card>
+                        <CardContent className="pt-6 space-y-4">
+                            <div>
+                                {/* Clear Results Button */}
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-lg font-semibold">Search Results</h3>
+                                    <button
+                                        onClick={() => setResults(null)} // Clear results
+                                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                                    >
+                                        Clear Results
+                                    </button>
+                                </div>
+                                <p className="text-gray-600 mb-4">{results.explanation}</p>
 
-                            <div className="space-y-2">
-                                {results.properties.map((property, index) => (
-                                    <div key={index} className="p-3 border rounded-lg hover:bg-gray-50">
-                                        <p>
-                                            {property.rooms} bedroom {property.purpose.toLowerCase()} property
-                                        </p>
-                                        <p className="text-gray-600">Location: {property.location}</p>
-                                        <p className="text-green-600">
-                                            Price: ${property.price.toLocaleString()}
-                                        </p>
-                                    </div>
-                                ))}
+                                <div className="space-y-2">
+                                    {Array.isArray(results?.properties) && results.properties.length > 0 ? (
+                                        results.properties.map((property, index) => (
+                                            <div key={index} className="p-3 border rounded-lg hover:bg-gray-50">
+                                                <p>
+                                                    {property.rooms} bedroom {property.purpose.toLowerCase()} property
+                                                </p>
+                                                <p className="text-gray-600">Location: {property.location}</p>
+                                                <p className="text-green-600">
+                                                    Price: ${property.price.toLocaleString()}
+                                                </p>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="text-gray-600">No properties found.</p>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
             ) : null}
         </div>
     );
