@@ -21,7 +21,7 @@ function ManagePage() {
         <div className="container flex flex-wrap items-center justify-between gap-6 py-8">
             <div >
                 <p className="text-3xl font-bold">Manage</p>
-                <p className="text-muted-foreground">Manage your account settings and categories</p>
+                <p className="text-muted-foreground pt-3">Manage your account settings and categories</p>
             </div>
         </div>
     </div>
@@ -30,7 +30,7 @@ function ManagePage() {
         <Card>
             <CardHeader>
                 <CardTitle>Currency</CardTitle>
-                <CardDescription>Set your default currency for transactions</CardDescription>
+                <CardDescription className='pt-2'>Set your default currency for transactions</CardDescription>
             </CardHeader>
             <CardContent>
                 <CurrencryComboBox />

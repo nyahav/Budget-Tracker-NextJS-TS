@@ -75,22 +75,26 @@ type TransactionHistoryRow = getTransactionHistoryResponseType[0];
         )
     },
     {
-        accessorKey: "date",
-        header: "Date",
-        cell: ({row}) => {
-            const date = new Date(row.original.date);
-            const formatterDate=date.toLocaleDateString("default",{
-                timeZone:"UTC",
-                year: "numeric",
-                month: "2-digit",
-                day: "2-digit"
-            })
-            return (
-            <div className="text-muted-foreground">
-                {formatterDate}
-            </div>
-        )}
-    },
+      accessorKey: "date",
+      header: ({column}) => (
+          <DataTableColumnHeader column={column} title="Date"/>
+      ),
+      sortingFn: 'datetime', 
+      cell: ({row}) => {
+          const date = new Date(row.original.date);
+          const formatterDate = date.toLocaleDateString("default", {
+              timeZone: "UTC",
+              year: "numeric",
+              month: "2-digit",
+              day: "2-digit"
+          });
+          return (
+              <div className="text-muted-foreground">
+                  {formatterDate}
+              </div>
+          );
+      }
+  },
     {
         accessorKey: "type",
         header: ({column}) => (                   
@@ -120,6 +124,17 @@ type TransactionHistoryRow = getTransactionHistoryResponseType[0];
                 {row.original.amount}
             </p>
         )
+    },
+    {
+      accessorKey: "locationId",
+      header: ({column}) => (
+          <DataTableColumnHeader column={column} title="Location"/>
+      ),
+      cell: ({row}) => (
+          <div className="text-muted-foreground">
+              {row.original.locationId || 'No Location'}
+          </div>
+      )
     },
     {
       id:"actions",
@@ -180,10 +195,32 @@ function TransactionTable({from,to}:Props) {
        return Array.from(uniqueCategories);
     },[history.data])
 
+    const locationOptions = useMemo(()=>{
+      const locationMap = new Map();
+      history.data?.forEach(transaction =>{
+        if (transaction.locationId) {
+          locationMap.set(transaction.locationId,{
+            value: transaction.locationId,
+            label: transaction.locationId  
+          })
+        }
+      })
+      const uniqueLocation = Array.from(locationMap.values());
+      console.log("Location Options:", uniqueLocation);
+      return uniqueLocation;
+    },[history.data])
+
   return (
     <div className="w-full">
     <div className="flex flex-wrap items-end justify-between gap-2 py-4">
         <div className="flex gap-2">
+           {table.getColumn("locationId") && (
+                <DataTableFacetedFilter 
+                    title="location" 
+                    column={table.getColumn("locationId")} 
+                    options={locationOptions} 
+                />
+            )}
             {table.getColumn("category") && (
                 <DataTableFacetedFilter 
                     title="Category" 
@@ -216,6 +253,7 @@ function TransactionTable({from,to}:Props) {
               amount: row.original.amount,
               formattedAmount: row.original.formattedAmount,
               date: row.original.date,
+              location: row.original.locationId,
             }))
             handleExportCsv(data);
           }}>

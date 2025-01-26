@@ -34,7 +34,7 @@ const items =[
     {label: "Manage", link: "/manage"},
     
     {
-        label: "Search",
+        label: "Search Properties",
         submenu: [
           { label: "Search To Buy", link: "/searchBuy" },
           { label: "Search To Rent", link: "/searchRent" },

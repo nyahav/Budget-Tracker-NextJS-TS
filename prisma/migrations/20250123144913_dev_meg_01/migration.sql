@@ -1,4 +1,11 @@
 -- CreateTable
+CREATE TABLE "User" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "name" TEXT NOT NULL,
+    "email" TEXT NOT NULL
+);
+
+-- CreateTable
 CREATE TABLE "UserSetting" (
     "userId" TEXT NOT NULL PRIMARY KEY,
     "currency" TEXT NOT NULL
@@ -86,6 +93,9 @@ CREATE TABLE "Properties" (
     "updatedAt" DATETIME NOT NULL,
     "imageUrl" TEXT
 );
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Category_name_userId_type_key" ON "Category"("name", "userId", "type");
