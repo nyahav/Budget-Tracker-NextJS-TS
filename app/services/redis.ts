@@ -28,38 +28,31 @@ export type FetchFromDBFunction = (
 ) => Promise<Property[]>;
 
 export class RedisPaginationService {
-  static setInCache(purpose: string, page: number, formattedProperties: { serialNumber: number; id: string; }[]) {
-    throw new Error('Method not implemented.');
-  }
+
   private redis: Redis;
   private readonly ITEMS_PER_PAGE: number;
   private readonly CACHE_TTL: number;
   private isConnected: boolean = false;
   static getFromCache: any;
 
-  constructor(redisUrl: string = process.env.REDIS_URL || 'redis://localhost:6379') {
-    this.redis = new Redis(redisUrl);
+  constructor(redisUrl: string = process.env.REDIS_URL || 'redis://redis:6379') {
+    this.redis = new Redis(redisUrl, {
+      retryStrategy: (times) => Math.min(times * 50, 2000),
+      maxRetriesPerRequest: 5,
+      enableReadyCheck: true
+    });
     this.ITEMS_PER_PAGE = 9;
-    this.CACHE_TTL = 3600; // 1 hour in seconds
+    this.CACHE_TTL = 3600;
     this.setupConnectionMonitoring();
   }
   private setupConnectionMonitoring() {
     this.redis.on('connect', () => {
-      console.log('Redis: Connection established');
+      console.log('Redis: Connected');
       this.isConnected = true;
     });
-
-    this.redis.on('ready', () => {
-      console.log('Redis: Ready to accept commands');
-    });
-
-    this.redis.on('error', (err) => {
-      console.error('Redis: Connection error', err);
-      this.isConnected = false;
-    });
-
-    this.redis.on('close', () => {
-      console.log('Redis: Connection closed');
+    
+    this.redis.on('error', (error) => {
+      console.error('Redis connection error:', error);
       this.isConnected = false;
     });
   }

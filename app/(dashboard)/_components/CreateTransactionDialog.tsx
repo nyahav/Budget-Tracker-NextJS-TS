@@ -21,6 +21,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CreateTransaction } from "../_actions/transaction";
 import { toast } from "sonner";
 import { DateToUTCDate } from "@/lib/helpers";
+import { LocationPicker } from "./LocationPicker";
 
 interface Props{
     trigger : ReactNode;
@@ -41,6 +42,10 @@ function CreateTransactionDialog({trigger,type}:Props) {
         form.setValue("category",value);
     },[form])
 
+    const handleLocationChange =useCallback((value: string) =>{
+        console.log('Selected location:', value);
+        form.setValue("locationId",value);
+    },[form])
     const queryClient = useQueryClient();
 
     const {mutate,isPending} = useMutation({
@@ -135,7 +140,8 @@ function CreateTransactionDialog({trigger,type}:Props) {
                             </FormItem>
                         )}
                     />
-                    Transaction : {form.watch("category")}
+                    
+                    {/* Transaction : {form.watch("category")} */}
                     <div className="flex items-center justify-center gap-2">
                     <FormField
                         control={form.control}
@@ -148,6 +154,21 @@ function CreateTransactionDialog({trigger,type}:Props) {
                                 </FormControl>
                                 <FormDescription>
                                     Select a category for this transaction
+                                </FormDescription>
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="locationId"
+                        render={({field}) =>(
+                            <FormItem className="flex flex-col">
+                                <FormLabel>Location</FormLabel>
+                                <FormControl>
+                                    <LocationPicker onChange={handleLocationChange}/>
+                                </FormControl>
+                                <FormDescription>
+                                    Select a Location for this transaction
                                 </FormDescription>
                             </FormItem>
                         )}

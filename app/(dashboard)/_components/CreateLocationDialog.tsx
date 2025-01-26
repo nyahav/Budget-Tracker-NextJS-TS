@@ -27,6 +27,7 @@ import {
 interface Props {
     //successCallBack: (location: Locations) => void;
     trigger?: ReactNode;
+    successCallBack?: (location: Locations) => void;
 }
 
 const propertyTypeOptions = [
@@ -48,7 +49,7 @@ export type CreateLocationFn = (form: CreateLocationSchemaType) => void;
 
 
 
-function CreateLocationDialog({  trigger }: Props) {
+function CreateLocationDialog({  trigger, successCallBack }: Props) {
     const [open, setOpen] = useState(false);
     //const [isLoading, setIsLoading] = useState(false);
    
@@ -94,6 +95,7 @@ function CreateLocationDialog({  trigger }: Props) {
         },
         onSuccess: (data) => {
         //   successCallBack(data);
+          successCallBack?.(data);
           console.log("Success response:", data);
           setOpen(false);
           toast.success('Location created successfully');
