@@ -8,7 +8,7 @@ import { prisma } from '@/lib/prisma';
 import CreateLocationDialog from '../_components/CreateLocationDialog';
 import { Button } from '@/components/ui/button';
 
-async function page() {
+async function LocationPage() {
     return (
         <>
             <div className="border-b bg-card">
@@ -41,4 +41,4 @@ async function page() {
     )
 }
 
-export default page
+export default LocationPage

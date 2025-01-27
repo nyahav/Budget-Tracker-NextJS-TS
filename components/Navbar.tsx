@@ -7,9 +7,16 @@ import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from './ui/button';
 import { UserButton } from '@clerk/nextjs';
 import { ThemeSwitcherBtn } from './ThemeSwitcherBtn';
+import { ChatGPTButton } from './ChatGPTButton';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 import { Menu } from 'lucide-react';
-
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+  } from "@/components/ui/dropdown-menu"
+  
 function Navbar() {
   return (
     <>
@@ -25,6 +32,14 @@ const items =[
     {label: "Transactions", link: "/transactions"},
     {label: "Locations", link: "/locations"},
     {label: "Manage", link: "/manage"},
+    
+    {
+        label: "Search Properties",
+        submenu: [
+          { label: "Search To Buy", link: "/searchBuy" },
+          { label: "Search To Rent", link: "/searchRent" },
+        ],
+      },
 ]
 
 function MobileNavbar(){
@@ -43,7 +58,7 @@ function MobileNavbar(){
                         <div className="flex flex-col gap-1 pt-4">
                             {items.map(item => <NavbarItem 
                             key={item.label} 
-                            link={item.link}
+                            link={item.link ?? '#'}
                             label={item.label}
                             onClick={()=>setIsOpen((prev)=>!prev)}
                             />
@@ -62,31 +77,46 @@ function MobileNavbar(){
         </div>
     )
 }
-function DesktopNavbar()
-{
-    return(
-        <div className='hidden border-separate border-b bg-background md:block'>
-            <nav className="container flex items-center justify-between px-8">
-                <div className="flex h-[80px] min-h-[60px] items-center gap-x-4">
-                    <Logo />
-                    <div className="flex h-full">
-                        {items.map(item =>(
-                            <NavbarItem 
-                            key={item.label}
-                            link={item.link}
-                            label={item.label}
-                            />
-                        ))}
-                    </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <ThemeSwitcherBtn />
-                    <UserButton afterSwitchSessionUrl='/sign-in'/>
-                </div>
-            </nav>
+function DesktopNavbar() {
+    return (
+      <nav className="hidden md:block">
+        <div className="container flex h-16 items-center justify-between">
+          <div className="flex items-center gap-6">
+            <Logo />
+            {items.map((item) => 
+              item.submenu ? (
+                <DropdownMenu key={item.label}>
+                  <DropdownMenuTrigger className="hover:text-primary">
+                    {item.label}
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {item.submenu.map((subItem) => (
+                      <DropdownMenuItem key={subItem.label}>
+                        <Link href={subItem.link} className="w-full ">
+                          {subItem.label}
+                        </Link>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <NavbarItem
+                  key={item.label}
+                  label={item.label}
+                  link={item.link}
+                />
+              )
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <ChatGPTButton />
+            <ThemeSwitcherBtn />
+            <UserButton afterSwitchSessionUrl="/sign-in" />
+          </div>
         </div>
+      </nav>
     )
-}
+  }
 
 function NavbarItem ({ link, label, onClick }: { link: string; label: string; onClick?: () => void }){
     const pathname = usePathname();

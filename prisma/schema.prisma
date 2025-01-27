@@ -18,45 +18,54 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model UserSetting{
-  userId String @id
+model User {
+  id    Int    @id @default(autoincrement())
+  name  String
+  email String @unique
+}
+
+model UserSetting {
+  userId   String @id
   currency String
 }
-model Category{
-  createAt DateTime @default(now())
-  name   String
-  userId String
-  icon   String
-  type   String @default("income")
 
-  @@unique([name,userId,type])
+model Category {
+  createAt DateTime @default(now())
+  name     String
+  userId   String
+  icon     String
+  type     String   @default("income")
+
+  @@unique([name, userId, type])
 }
 
-model Transaction{
-  id String @id @default(uuid())
-  createAt DateTime @default(now())
-  updateAt DateTime @default(now())
-
-  amount Float
-  description String
-  date DateTime 
-  userId String
-  type String @default("income")
-
-  category String
+model Transaction {
+  id           String   @id @default(uuid())
+  createAt     DateTime @default(now())
+  updateAt     DateTime @default(now())
+  amount       Float
+  description  String
+  date         DateTime
+  userId       String
+  type         String   @default("income")
+  category     String
   categoryIcon String
+
+  locationId String?
+  location   Locations? @relation("TransactionToLocation", fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@index([locationId])
 }
 
 model Locations {
   id        String   @id @default(uuid())
   createdAt DateTime @default(now())
 
-
-  address   String
-  city      String
-  state     String
-  zipCode   String
-  userId    String
+  address String
+  city    String
+  state   String
+  zipCode String
+  userId  String
 
   squareFeet Float
   bedrooms   Int
@@ -66,28 +75,59 @@ model Locations {
   currentValue  Float
   monthlyRent   Float?
 
-  propertyType String   // enum: house, apartment, condo, land, commercial
-  status       String   // enum: active, pending, sold, rented
+  propertyType String // enum: house, apartment, condo, land, commercial
+  status       String // enum: active, pending, sold, rented
+  transactions Transaction[] @relation("TransactionToLocation")
 }
 
-
-model MonthHistory{
-  userId String
-  day Int 
-  month Int
-  year Int
-  income Float
+model MonthHistory {
+  userId  String
+  day     Int
+  month   Int
+  year    Int
+  income  Float
   expense Float
 
-  @@id([day,month,year,userId])
+  @@id([day, month, year, userId])
 }
 
-model YearHistory{
-  userId String
-  month Int
-  year Int
-  income Float
+model YearHistory {
+  userId  String
+  month   Int
+  year    Int
+  income  Float
   expense Float
 
-  @@id([month,year,userId])
+  @@id([month, year, userId])
+}
+
+model Property {
+  id               String         @id @default(uuid())
+  purpose          Purpose
+  title            String
+  price            Float
+  rooms            Int
+  baths            Int
+  area             Float
+  rentFrequency    RentFrequency?
+  location         String
+  description      String
+  furnishingStatus String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  imageUrl         String?
+
+  @@map("Properties") // Optional: Rename the table in the database if needed
+}
+
+enum Purpose {
+  buy
+  rent
+}
+
+enum RentFrequency {
+  YEARLY
+  MONTHLY
+  WEEKLY
+  DAILY
 }
