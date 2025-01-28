@@ -66,7 +66,13 @@ function CreateTransactionDialog({trigger,type}:Props) {
             //after creating a transaction,we invalidate the overview query
             //  which will refetch data in the homepage
             queryClient.invalidateQueries({
-                queryKey:["overview"]
+                queryKey: ["overview", "history"]
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["transaction", "history"]
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["overview", "stats"]
             })
 
             setOpen((prev) => !prev)
@@ -91,11 +97,11 @@ function CreateTransactionDialog({trigger,type}:Props) {
     }, [mutate]);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen} >
         <DialogTrigger asChild>
             {trigger}
         </DialogTrigger>
-        <DialogContent>
+        <DialogContent className="w-full max-w-3xl">
             <DialogHeader>
                 <DialogTitle>Create a new{" "} 
                     <span className={cn(

@@ -10,12 +10,12 @@ import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Props {
-    type: TransactionType
+  
     onChange: (value:string) => void
 
 }
 
-export function LocationPicker({ type,onChange }: Props) {
+export function LocationPicker({ onChange }: Props) {
     const [open,setOpen] = React.useState(false);
     const [value,setValue] = React.useState("false");
 
@@ -24,17 +24,33 @@ export function LocationPicker({ type,onChange }: Props) {
         onChange(value);
     },[onChange,value])
 
+
+    // const { data, isLoading, isError, error } = useQuery<LocationData[]>({
+    //       queryKey: ["location", "history"],
+    //       queryFn: async () => {
+    //           const response = await fetch('/api/location-history');
+    //           if (!response.ok) {
+    //               throw new Error(`API Error: ${response.statusText}`);
+    //           }
+    //           const data = await response.json();
+              
+    //           return data;
+    //       },
+    //       retry: 1,
+    //   });
+
     const locationsQuery = useQuery({
-        queryKey: ["locations",type],
-        queryFn: () => fetch(`/api/location-history?type=${type}`).then((res) => res.json()),
+        queryKey: ["locations"],
+        queryFn: () => fetch(`/api/location-history`).then((res) => res.json()),
     });
-    
+    console.log("locationsQuery", locationsQuery);
+
     const selectLocation = locationsQuery.data?.find(
-        (location :Locations) => location.name ===value
+        (location :Locations) => location.address +location.city ===value
     );
 
     const onSuccessCallBack = useCallback((location: Locations) => {
-        setValue(location.name);
+        setValue(location.address +location.city);
         setOpen((prev) =>!prev);
     },[setValue,setOpen]);
 
@@ -59,7 +75,7 @@ export function LocationPicker({ type,onChange }: Props) {
           <Command>
               <CommandList>
                 <CommandInput placeholder="Search location..." />
-                  <CreateLocationDialog type={type} successCallBack={onSuccessCallBack}/>
+                  <CreateLocationDialog  successCallBack={onSuccessCallBack}/>
                   <CommandEmpty>
                     <p>Location not found</p>
                     <p className='text-xs text-muted-foreground'>
@@ -71,9 +87,9 @@ export function LocationPicker({ type,onChange }: Props) {
                         {locationsQuery.data && 
                         locationsQuery.data.map((location :Locations)=> (
                             <CommandItem
-                            key={location.name}
+                            key={location.address +location.city}
                             onSelect={() => {
-                                setValue(location.name);  
+                                setValue(location.address +location.city);  
                                 setOpen((prev) =>!prev);  
                             }}
                             className="flex items-center justify-between hover:bg-muted"
@@ -82,7 +98,7 @@ export function LocationPicker({ type,onChange }: Props) {
                             <Check
                                 className={cn(
                                     "mr-2 w-4 h-4",
-                                    value === location.name ? "opacity-100" : "opacity-0"
+                                    value === location.address +location.city ? "opacity-100" : "opacity-0"
                                 )}
                             />
                         </CommandItem>
@@ -98,7 +114,6 @@ export function LocationPicker({ type,onChange }: Props) {
 
 function LocationRow({location}:{location :Locations}){
     return <div className="flex items-center gap-2">
-        <span role='img'>{location.icon}</span>
-        <span>{location.name}</span>
+        <span>{location.address +location.city}</span>
     </div>
 }

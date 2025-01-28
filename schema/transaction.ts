@@ -8,7 +8,7 @@ export const CreateTransactionSchema = z.object({
     type: z.union([
         z.literal("income"),
         z.literal("expense"),]),
-    locationId: z.string().uuid().optional()
+    locationId: z.string().optional()
     
 })
 export type CreateTransactionSchemaType = z.infer<typeof CreateTransactionSchema>;

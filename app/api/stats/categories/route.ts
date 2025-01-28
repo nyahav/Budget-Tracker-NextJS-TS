@@ -107,6 +107,5 @@ async function getCategoriesStats(userId: string, from: Date, to: Date) {
             },
         },
     });
-    console.log("Inside getCategoriesStats:", stats); 
     return stats;
 }

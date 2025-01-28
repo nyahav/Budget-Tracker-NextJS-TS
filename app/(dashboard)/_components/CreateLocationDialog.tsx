@@ -51,6 +51,7 @@ export type CreateLocationFn = (form: CreateLocationSchemaType) => void;
 
 function CreateLocationDialog({  trigger, successCallBack }: Props) {
     const [open, setOpen] = useState(false);
+    const queryClient = useQueryClient();
     //const [isLoading, setIsLoading] = useState(false);
    
     
@@ -94,15 +95,19 @@ function CreateLocationDialog({  trigger, successCallBack }: Props) {
           return response.json();
         },
         onSuccess: (data) => {
-        //   successCallBack(data);
           successCallBack?.(data);
           console.log("Success response:", data);
           setOpen(false);
-          toast.success('Location created successfully');
+          toast.success('Location created successfully 🎉');
+          form.reset()
+          queryClient.invalidateQueries({
+            queryKey: ["location", "history"]  
+        });
+        setOpen(false);
         },
         onError: () => {
-          
           toast.error('Failed to create location');
+          console.error(Error);
         },
       });
 
